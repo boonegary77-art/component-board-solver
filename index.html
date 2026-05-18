@@ -1,0 +1,4278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#222741" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Component Board Calculator" />
+  <title>Component Board Calculator</title>
+  <style>
+    :root {
+      --bg-dark: #131729;
+      --bg-mid: #222741;
+      --panel-top: #d4d7e9;
+      --panel-bottom: #b7bbd1;
+      --panel-border: #0f1120;
+      --title-top: #3a3f59;
+      --title-bottom: #0a0d19;
+      --board-frame: #b9bcdd;
+      --board-cell-empty: #242842;
+      --board-cell-border: #4f5479;
+      --text-dark: #121212;
+      --text-light: #f5f5f5;
+      --accent: #c4c7cd;
+      --ok: #79d28d;
+      --warn: #ffd66f;
+      --row-highlight-top: #efc95c;
+      --row-highlight-bottom: #d2a53a;
+      --cell-size: min(8.2vw, 56px);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text-dark);
+      background:
+        radial-gradient(circle at 15% 0%, #323a63 0%, transparent 42%),
+        radial-gradient(circle at 90% 20%, #2f365a 0%, transparent 38%),
+        linear-gradient(165deg, var(--bg-mid), var(--bg-dark));
+      display: flex;
+      justify-content: center;
+      padding: 20px 12px 34px;
+    }
+
+    .app {
+      width: min(980px, 100%);
+      display: grid;
+      gap: 14px;
+    }
+
+    .title-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .title-panel {
+      margin: 0;
+      width: fit-content;
+      padding: 10px 20px;
+      color: var(--text-light);
+      font-size: clamp(1.4rem, 3.5vw, 2.1rem);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      border-radius: 12px;
+      border: 2px solid #060607;
+      background: linear-gradient(var(--title-top), var(--title-bottom));
+      box-shadow:
+        inset 0 2px 0 rgba(255, 255, 255, 0.25),
+        inset 0 -2px 0 rgba(0, 0, 0, 0.75),
+        0 8px 18px rgba(0, 0, 0, 0.38);
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .board-width-options {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 11px;
+      border: 2px solid #0f1120;
+      background: linear-gradient(#c5c9de, #a6acce);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    .board-width-btn {
+      border: 2px solid rgba(8, 12, 24, 0.8);
+      border-radius: 9px;
+      min-width: 52px;
+      padding: 6px 9px;
+      font-weight: 900;
+      font-size: 0.9rem;
+      color: #ffffff;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+      touch-action: manipulation;
+    }
+
+    .board-width-btn:hover {
+      filter: brightness(1.06);
+    }
+
+    .board-width-btn.active {
+      outline: 2px solid #ffffff;
+      outline-offset: 1px;
+      filter: saturate(1.08) brightness(1.04);
+    }
+
+    .board-width-btn[data-cols="7"] {
+      background: linear-gradient(#4d84df, #254f95);
+    }
+
+    .board-width-btn[data-cols="9"] {
+      background: linear-gradient(#9a67eb, #56308f);
+    }
+
+    .board-width-btn[data-cols="12"] {
+      background: linear-gradient(#df5f67, #962b32);
+    }
+
+    .panel {
+      border: 3px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 14px;
+      background: linear-gradient(var(--panel-top), var(--panel-bottom));
+      box-shadow:
+        inset 0 2px 0 rgba(255, 255, 255, 0.7),
+        inset 0 -3px 0 rgba(0, 0, 0, 0.25),
+        0 10px 24px rgba(0, 0, 0, 0.32);
+    }
+
+    .board-panel {
+      width: fit-content;
+      margin: 0 auto;
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+    }
+
+    .board-shell {
+      padding: 14px;
+      border-radius: 14px;
+      border: 4px solid #1a2345;
+      background: var(--board-frame);
+      box-shadow:
+        inset 0 2px 0 rgba(255, 255, 255, 0.65),
+        inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+    }
+
+    .board-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(var(--board-cols, 7), var(--cell-size));
+      grid-template-rows: repeat(8, var(--cell-size));
+      gap: 3px;
+      padding: 3px;
+      border-radius: 9px;
+      border: 2px solid #203056;
+      background: #6675a3;
+      box-shadow: inset 0 0 0 2px rgba(9, 13, 29, 0.35);
+    }
+
+    .board-cell {
+      position: relative;
+      z-index: 2;
+      border-radius: 5px;
+      border: 1px solid var(--board-cell-border);
+      background: var(--board-cell-empty);
+      transition: background-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .board-cell.filled {
+      border-color: rgba(21, 24, 40, 0.45);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+        inset 0 -10px 20px rgba(23, 26, 40, 0.08);
+    }
+
+    .board-cell.complete-row {
+      border-color: rgba(156, 113, 24, 0.72);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 246, 210, 0.28),
+        0 0 0 1px rgba(255, 226, 141, 0.95),
+        0 0 0 2px rgba(168, 121, 35, 0.62);
+    }
+
+    .board-cell.has-diamonds::after {
+      content: '♦';
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: calc(var(--cell-size) * 0.45);
+      font-weight: 900;
+      pointer-events: none;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    .board-grid.is-solving .board-cell {
+      animation: boardCellPulse 1.1s ease-in-out infinite;
+    }
+
+    .board-grid.is-solving .board-cell:nth-child(2n) {
+      animation-delay: 0.18s;
+    }
+
+    .board-grid.is-solving .board-cell:nth-child(3n) {
+      animation-delay: 0.32s;
+    }
+
+    .row-highlight-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .row-highlight {
+      position: absolute;
+      border-radius: 6px;
+      background: linear-gradient(var(--row-highlight-top), var(--row-highlight-bottom));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        0 0 0 1px rgba(130, 90, 18, 0.35);
+      opacity: 0;
+      transition: opacity 140ms ease;
+    }
+
+    .row-highlight.active {
+      opacity: 0.96;
+    }
+
+    .piece-outline-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      overflow: visible;
+    }
+
+    .piece-outline-path {
+      fill: none;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      stroke-width: 4.8px;
+      opacity: 0.98;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .board-solving-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      border-radius: 8px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 120ms ease;
+      background:
+        radial-gradient(circle at center, rgba(14, 21, 49, 0.12), rgba(14, 21, 49, 0.48));
+    }
+
+    .board-grid.is-solving .board-solving-overlay {
+      opacity: 1;
+    }
+
+    .board-solving-spinner {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 3px solid rgba(199, 214, 255, 0.35);
+      border-top-color: rgba(255, 255, 255, 0.96);
+      animation: spin 0.8s linear infinite;
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
+    }
+
+    .board-solving-text {
+      font-size: 0.86rem;
+      letter-spacing: 0.02em;
+      font-weight: 800;
+      color: rgba(243, 247, 255, 0.96);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+      text-transform: uppercase;
+    }
+
+    .helper {
+      margin: 0;
+      font-weight: 700;
+      color: #25314f;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    .controls-panel {
+      display: grid;
+      gap: 10px;
+      padding-top: 8px;
+    }
+
+    .subhead {
+      margin: 0;
+      font-size: 1.2rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      text-align: center;
+      color: #161719;
+    }
+
+    .components-head {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+    }
+
+    .components-help-btn {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 30px;
+      height: 30px;
+      border: 2px solid #1b2748;
+      border-radius: 999px;
+      background: linear-gradient(#c7d6f6, #8fa9d8);
+      color: #17254a;
+      font-size: 0.95rem;
+      font-weight: 900;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      touch-action: manipulation;
+    }
+
+    .components-help-btn:hover {
+      filter: brightness(1.04);
+    }
+
+    .inventory-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .piece-card {
+      background: linear-gradient(#d0d2d9, #c6c8d1);
+      border: 2px solid #2b2f44;
+      border-radius: 12px;
+      padding: 10px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      min-height: 290px;
+    }
+
+    .piece-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .swatch {
+      width: 13px;
+      height: 13px;
+      border-radius: 3px;
+      border: 1px solid rgba(0, 0, 0, 0.45);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+      flex: 0 0 auto;
+    }
+
+    .piece-shape-wrap {
+      min-height: 80px;
+      display: grid;
+      place-items: center;
+    }
+
+    .piece-shape-wrap.is-rotatable {
+      cursor: pointer;
+      border-radius: 10px;
+      outline: none;
+      transition: background-color 120ms ease;
+    }
+
+    .piece-shape-wrap.is-rotatable:hover {
+      background: rgba(34, 53, 98, 0.08);
+    }
+
+    .piece-shape-wrap.is-rotatable:focus-visible {
+      box-shadow: 0 0 0 2px rgba(45, 88, 173, 0.65);
+      background: rgba(34, 53, 98, 0.1);
+    }
+
+    .piece-shape {
+      --shape-cell-size: 20px;
+      display: grid;
+      gap: 4px;
+      width: max-content;
+      filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.2));
+      transform-origin: 50% 50%;
+      transition: transform 150ms cubic-bezier(0.2, 0.85, 0.28, 1);
+    }
+
+    .piece-shape.no-rotate-transition {
+      transition: none;
+    }
+
+    .piece-shape-cell {
+      position: relative;
+      width: var(--shape-cell-size);
+      height: var(--shape-cell-size);
+      border-radius: 6px;
+      border: 2px solid rgba(38, 40, 52, 0.45);
+      border-color: rgba(0, 0, 0, 0.35);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+        inset 0 -10px 12px rgba(20, 22, 31, 0.08);
+    }
+
+    .piece-shape-cell.has-diamonds::after {
+      content: '♦';
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: calc(var(--shape-cell-size) * 0.55);
+      font-weight: 900;
+      pointer-events: none;
+    }
+
+    .piece-input {
+      display: grid;
+      gap: 6px;
+      justify-items: center;
+    }
+
+    .piece-input label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #34363a;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .piece-input input {
+      width: 66px;
+      border: 2px solid #202226;
+      border-radius: 8px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      text-align: center;
+      padding: 3px 6px;
+      background: #f8f8f9;
+      color: #111;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
+    .piece-input input::-webkit-outer-spin-button,
+    .piece-input input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .piece-stepper {
+      display: grid;
+      grid-template-columns: 30px 66px 30px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .piece-instances-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      width: 100%;
+      margin-top: 6px;
+      max-height: 100px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .instance-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255, 255, 255, 0.35);
+      padding: 2px 4px;
+      border-radius: 5px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+    }
+
+    .instance-label {
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: #222;
+    }
+
+    .instance-select {
+      flex: 1;
+      font-size: 0.65rem;
+      font-weight: 900;
+      border-radius: 4px;
+      border: 1px solid #111;
+      padding: 1px 2px;
+      cursor: pointer;
+      background: #f0f0f0;
+      outline: none;
+    }
+
+    .step-btn {
+      border: 2px solid #1e2025;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      line-height: 1;
+      font-weight: 900;
+      height: 34px;
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      color: #101217;
+      background: linear-gradient(#ffffff, #d9dbde);
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .step-btn:hover {
+      filter: brightness(1.04);
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .calc-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .live-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      color: #1f2947;
+      user-select: none;
+    }
+
+    .live-toggle input {
+      inline-size: 18px;
+      block-size: 18px;
+      accent-color: #3057a8;
+      cursor: pointer;
+    }
+
+    .reset-btn {
+      border: 2px solid #121316;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      padding: 8px 14px;
+      color: #f1f1f1;
+      cursor: pointer;
+      background: linear-gradient(#50545b, #24272c);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+      touch-action: manipulation;
+    }
+
+    .reset-btn:hover {
+      filter: brightness(1.06);
+    }
+
+    .calculate-btn {
+      border: 2px solid #121316;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      padding: 8px 14px;
+      color: #f1f1f1;
+      cursor: pointer;
+      background: linear-gradient(#3b67be, #1d3567);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      min-width: 120px;
+      touch-action: manipulation;
+    }
+
+    .calculate-btn:hover:not(:disabled) {
+      filter: brightness(1.05);
+    }
+
+    .calculate-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      filter: grayscale(0.25);
+    }
+
+    .stop-btn {
+      border: 2px solid #3a1016;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      padding: 8px 14px;
+      color: #f7ecec;
+      cursor: pointer;
+      background: linear-gradient(#b94653, #6f1f2a);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      min-width: 94px;
+      touch-action: manipulation;
+    }
+
+    .stop-btn:hover:not(:disabled) {
+      filter: brightness(1.06);
+    }
+
+    .stop-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      filter: grayscale(0.25);
+    }
+
+    .layout-options {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+
+    .layout-option-btn {
+      border: 2px solid #1e2a4a;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 0.84rem;
+      padding: 7px 8px;
+      color: #dfe7fb;
+      cursor: pointer;
+      background: linear-gradient(#34466f, #1c2747);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);
+      text-align: center;
+      touch-action: manipulation;
+      white-space: nowrap;
+    }
+
+    .layout-option-letter {
+      font-size: 1rem;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+      color: #ffffff;
+      margin-right: 4px;
+    }
+
+    .layout-option-sep {
+      opacity: 0.9;
+      margin-right: 4px;
+    }
+
+    .layout-option-detail {
+      font-size: 0.9em;
+      font-weight: 800;
+      opacity: 0.96;
+    }
+
+    .layout-option-btn:hover:not(:disabled) {
+      filter: brightness(1.06);
+    }
+
+    .layout-option-btn.active {
+      border-color: #0f1b36;
+      color: #ffffff;
+      background: linear-gradient(#4f78d0, #294f9d);
+    }
+
+    .layout-option-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      filter: grayscale(0.3);
+    }
+
+    .status-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      color: #1d2025;
+      min-height: 22px;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+    }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(0, 0, 0, 0.25);
+      border-top-color: rgba(0, 0, 0, 0.8);
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+
+    .spinner.active {
+      display: inline-block;
+    }
+
+    .status-meta {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #2f3553;
+      opacity: 0.95;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes boardCellPulse {
+      0%, 100% {
+        filter: brightness(1);
+      }
+      50% {
+        filter: brightness(1.1);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .board-grid.is-solving .board-cell {
+        animation: none;
+      }
+    }
+
+    .stats-panel {
+      display: grid;
+      gap: 10px;
+    }
+
+    .stats-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .stats-panel-title {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 900;
+      color: #1d2340;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+    }
+
+    .stats-toggle-btn {
+      border: 2px solid #1d2a4d;
+      border-radius: 10px;
+      background: linear-gradient(#c3d2f0, #98afd7);
+      color: #17233f;
+      font-weight: 800;
+      font-size: 0.86rem;
+      padding: 6px 9px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58);
+      touch-action: manipulation;
+    }
+
+    .stats-toggle-btn:hover {
+      filter: brightness(1.03);
+    }
+
+    .stats-toggle-chevron {
+      font-size: 0.95rem;
+      line-height: 1;
+      transition: transform 140ms ease;
+      transform: rotate(0deg);
+    }
+
+    .stats-panel.collapsed .stats-toggle-chevron {
+      transform: rotate(-90deg);
+    }
+
+    .stats-panel-body {
+      display: grid;
+      gap: 10px;
+    }
+
+    .stats-panel.collapsed .stats-panel-body {
+      display: none;
+    }
+
+    .beta-row {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 2px 2px 0;
+    }
+
+    .advanced-mode-card {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(0, 0, 0, 0.16);
+    }
+
+    .advanced-mode-heading {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 900;
+      color: #1d2340;
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
+    }
+
+    .advanced-mode-section {
+      gap: 10px;
+    }
+
+    .advanced-mode-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .advanced-mode-section-body {
+      display: grid;
+      gap: 8px;
+    }
+
+    .advanced-mode-section.collapsed .advanced-mode-section-body {
+      display: none;
+    }
+
+    .advanced-mode-section.collapsed .stats-toggle-chevron {
+      transform: rotate(-90deg);
+    }
+
+    .advanced-mode-options {
+      display: grid;
+      gap: 6px;
+    }
+
+    .advanced-mode-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      color: #1f2947;
+      user-select: none;
+      font-size: 0.93rem;
+    }
+
+    .advanced-mode-option input {
+      inline-size: 17px;
+      block-size: 17px;
+      accent-color: #3057a8;
+      cursor: pointer;
+    }
+
+    .advanced-help-text {
+      margin: 0;
+      font-size: 0.77rem;
+      line-height: 1.3;
+      color: #5b6279;
+      font-weight: 700;
+      font-style: italic;
+    }
+
+    .priority-components {
+      display: grid;
+      gap: 6px;
+    }
+
+    .priority-components.is-disabled {
+      opacity: 0.62;
+    }
+
+    .priority-components-title {
+      margin: 0;
+      font-size: 0.83rem;
+      font-weight: 800;
+      color: #243255;
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
+    }
+
+    .priority-components-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .advanced-mode-warning {
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(149, 63, 22, 0.4);
+      background: rgba(255, 221, 183, 0.58);
+      color: #4d230b;
+      font-size: 0.88rem;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .advanced-mode-warning.is-default {
+      border-color: rgba(22, 112, 56, 0.45);
+      background: rgba(198, 242, 212, 0.7);
+      color: #114626;
+    }
+
+    .priority-component-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(18, 26, 44, 0.45);
+      background: rgba(248, 250, 255, 0.88);
+      font-size: 0.84rem;
+      font-weight: 800;
+      color: #1d2440;
+      user-select: none;
+    }
+
+    .priority-component-pill input {
+      inline-size: 15px;
+      block-size: 15px;
+      accent-color: #3057a8;
+      cursor: pointer;
+    }
+
+    .priority-component-icon {
+      display: grid;
+      align-items: center;
+      justify-items: center;
+      min-width: 44px;
+      min-height: 28px;
+    }
+
+    .priority-component-icon .piece-shape {
+      --shape-cell-size: 7px;
+      gap: 1px;
+      filter: none;
+    }
+
+    .priority-component-icon .piece-shape-cell {
+      border-width: 1px;
+      border-radius: 2px;
+    }
+
+    .rules {
+      margin: 0;
+      padding: 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(0, 0, 0, 0.16);
+      font-size: 0.93rem;
+      line-height: 1.35;
+      color: #202226;
+    }
+
+    .stats-section {
+      display: grid;
+      gap: 8px;
+    }
+
+    .stats-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .stats-section-title {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 900;
+      color: #1d2340;
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
+    }
+
+    .stats-section-body {
+      display: grid;
+      gap: 10px;
+    }
+
+    .stats-section.collapsed .stats-section-body {
+      display: none;
+    }
+
+    .stats-section.collapsed .stats-toggle-chevron {
+      transform: rotate(-90deg);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(180px, 1fr));
+      gap: 8px 14px;
+    }
+
+    .stat {
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid rgba(0, 0, 0, 0.18);
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .stat .label {
+      color: #35383d;
+    }
+
+    .stat .value {
+      color: #141519;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .usage-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(115px, 1fr));
+      gap: 6px;
+    }
+
+    .usage-card {
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid rgba(0, 0, 0, 0.18);
+      border-radius: 6px;
+      padding: 6px 8px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.83rem;
+      font-weight: 700;
+    }
+
+    .usage-top {
+      grid-column: 2;
+      grid-row: 1;
+      display: grid;
+      place-items: center;
+      width: 46px;
+      min-height: 40px;
+    }
+
+    .usage-piece-icon {
+      display: grid;
+      align-items: center;
+      justify-items: center;
+      width: 44px;
+      min-width: 44px;
+      min-height: 40px;
+    }
+
+    .usage-piece-icon .piece-shape {
+      --shape-cell-size: 8px;
+      gap: 1px;
+      filter: none;
+    }
+
+    .usage-piece-icon .piece-shape-cell {
+      border-width: 1px;
+      border-radius: 2px;
+    }
+
+    .usage-lines {
+      grid-column: 1;
+      grid-row: 1;
+      color: #23262b;
+      line-height: 1.2;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tips-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: grid;
+      place-items: center;
+      padding: 14px;
+      background: rgba(9, 13, 29, 0.62);
+      backdrop-filter: blur(2px);
+    }
+
+    .tips-modal[hidden] {
+      display: none;
+    }
+
+    .tips-modal-card {
+      width: min(620px, 100%);
+      max-height: min(84vh, 760px);
+      overflow: auto;
+      border: 3px solid #0f1631;
+      border-radius: 14px;
+      padding: 14px 14px 12px;
+      background: linear-gradient(#d8dcef, #bec4dd);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.75),
+        0 18px 32px rgba(0, 0, 0, 0.38);
+      color: #16203f;
+    }
+
+    .tips-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .tips-modal-title {
+      margin: 0;
+      font-size: 1.06rem;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+    }
+
+    .tips-close-btn {
+      border: 2px solid #1f2e52;
+      border-radius: 6px;
+      background: linear-gradient(#c7d6f5, #95add9);
+      color: #15233f;
+      font-size: 0.86rem;
+      font-weight: 800;
+      padding: 5px 10px;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66);
+      touch-action: manipulation;
+    }
+
+    .tips-close-btn:hover {
+      filter: brightness(1.03);
+    }
+
+    .tips-list {
+      margin: 0;
+      padding-left: 20px;
+      display: grid;
+      gap: 7px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #20273b;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 860px) {
+      body {
+        padding: 14px 10px 20px;
+      }
+
+      .app {
+        gap: 10px;
+      }
+
+      .panel {
+        padding: 10px;
+      }
+
+      .controls-panel {
+        padding-top: 6px;
+      }
+
+      .board-panel {
+        width: 100%;
+      }
+
+      .board-shell {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+        overflow-y: hidden;
+        padding: 10px;
+      }
+
+      .board-grid {
+        width: max-content;
+        margin: 0 auto;
+      }
+
+      .inventory-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .piece-card {
+        min-height: 0;
+        grid-template-columns: 84px minmax(0, 1fr);
+        column-gap: 7px;
+        align-items: center;
+        align-content: center;
+        padding: 7px 8px;
+        gap: 5px;
+      }
+
+      .piece-shape-wrap {
+        width: 74px;
+        min-height: 66px;
+        padding: 3px;
+        border-radius: 7px;
+        justify-self: start;
+        background: rgba(255, 255, 255, 0.22);
+      }
+
+      .piece-input {
+        width: 100%;
+        min-width: 0;
+        justify-items: center;
+        align-content: center;
+        gap: 5px;
+      }
+
+      .piece-input label {
+        font-size: 0.7rem;
+        width: auto;
+        text-align: center;
+      }
+
+      .piece-input input {
+        width: 100%;
+        min-width: 0;
+        max-width: 62px;
+        min-height: 36px;
+        font-size: 1.03rem;
+        padding: 2px 4px;
+      }
+
+      .piece-stepper {
+        width: min(100%, 132px);
+        max-width: 132px;
+        grid-template-columns: 30px minmax(0, 1fr) 30px;
+        gap: 5px;
+        justify-self: center;
+      }
+
+      .step-btn {
+        height: 36px;
+        font-size: 1.1rem;
+      }
+
+      .piece-card .piece-shape {
+        --shape-cell-size: 11px;
+        gap: 2px;
+      }
+
+      .piece-card .piece-shape-cell {
+        border-radius: 2px;
+        border-width: 1px;
+      }
+
+      .usage-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      :root {
+        --cell-size: min(9.2vw, 44px);
+      }
+    }
+
+    @media (max-width: 620px) {
+      body {
+        padding: 10px 8px 16px;
+      }
+
+      .title-row {
+        gap: 8px;
+      }
+
+      .title-panel {
+        width: 100%;
+        padding: 9px 12px;
+        font-size: clamp(1.1rem, 5.2vw, 1.45rem);
+      }
+
+      .components-help-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.88rem;
+      }
+
+      .board-width-options {
+        width: 100%;
+        justify-content: stretch;
+      }
+
+      .board-width-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        min-height: 42px;
+      }
+
+      .controls-row {
+        align-items: stretch;
+      }
+
+      .calc-controls {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .calculate-btn,
+      .stop-btn,
+      .reset-btn {
+        width: 100%;
+        min-height: 44px;
+      }
+
+      .layout-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .status-wrap {
+        width: 100%;
+        min-height: 24px;
+      }
+
+      .inventory-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .usage-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .piece-card {
+        min-height: 0;
+        padding: 5px;
+        gap: 5px;
+      }
+
+      .piece-shape-wrap {
+        min-height: 74px;
+      }
+
+      :root {
+        --cell-size: min(10.6vw, 38px);
+      }
+
+      .piece-shape {
+        --shape-cell-size: 16px;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .inventory-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .piece-card {
+        grid-template-columns: 88px minmax(0, 1fr);
+        column-gap: 6px;
+        align-items: center;
+        padding: 5px 7px;
+      }
+
+      .piece-shape-wrap {
+        width: 72px;
+        min-height: 64px;
+        padding: 3px;
+        border-radius: 7px;
+        justify-self: start;
+        background: rgba(255, 255, 255, 0.26);
+      }
+
+      .piece-input {
+        width: 100%;
+        min-width: 0;
+        justify-items: center;
+        align-content: center;
+        gap: 5px;
+      }
+
+      .piece-input label {
+        font-size: 0.62rem;
+        width: auto;
+        text-align: center;
+      }
+
+      .piece-input input {
+        width: 100%;
+        min-width: 0;
+        max-width: 60px;
+        min-height: 34px;
+        font-size: 1.04rem;
+        padding: 2px 4px;
+      }
+
+      .piece-stepper {
+        width: min(100%, 132px);
+        max-width: 132px;
+        grid-template-columns: 34px minmax(52px, 1fr) 34px;
+        gap: 6px;
+        justify-self: center;
+      }
+
+      .step-btn {
+        height: 34px;
+        font-size: 1.02rem;
+      }
+
+      :root {
+        --cell-size: min(12vw, 34px);
+      }
+
+      .piece-card .piece-shape {
+        --shape-cell-size: 12px;
+        gap: 2px;
+      }
+
+      .piece-card .piece-shape-cell {
+        border-radius: 2px;
+        border-width: 1px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="title-row">
+      <h1 class="title-panel">Component Board Calculator</h1>
+      <div class="board-width-options" aria-label="Board width">
+        <button type="button" class="board-width-btn" data-cols="7">7 Wide</button>
+        <button type="button" class="board-width-btn" data-cols="9">9 Wide</button>
+        <button type="button" class="board-width-btn" data-cols="12">12 Wide</button>
+      </div>
+    </div>
+
+    <section class="panel board-panel">
+      <div class="board-shell">
+        <div id="board" class="board-grid" aria-label="7 by 8 board"></div>
+      </div>
+    </section>
+
+    <section class="panel controls-panel">
+      <div id="layoutOptions" class="layout-options" aria-label="Top layout options" hidden></div>
+      <div class="components-head">
+        <h2 class="subhead">Components</h2>
+        <button id="componentsHelpBtn" class="components-help-btn" type="button" aria-haspopup="dialog" aria-controls="tipsModal" aria-expanded="false" title="Tips and guidance">i</button>
+      </div>
+      <div id="inventoryGrid" class="inventory-grid"></div>
+
+      <div class="controls-row">
+        <div class="status-wrap" aria-live="polite">
+          <span id="spinner" class="spinner" aria-hidden="true"></span>
+          <span id="statusText">Ready</span>
+          <span id="statusMeta" class="status-meta"></span>
+        </div>
+        <div class="calc-controls">
+          <button id="calculateBtn" class="calculate-btn" type="button">Calculate</button>
+          <button id="stopBtn" class="stop-btn" type="button" disabled>Stop</button>
+          <button id="anotherLayoutBtn" class="reset-btn" type="button">Another Layout</button>
+          <button id="resetBtn" class="reset-btn" type="button">Reset Defaults</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="tipsModal" class="tips-modal" hidden>
+      <div class="tips-modal-card" role="dialog" aria-modal="true" aria-labelledby="tipsModalTitle" aria-describedby="tipsList">
+        <div class="tips-modal-head">
+          <h3 id="tipsModalTitle" class="tips-modal-title">Quick Tips</h3>
+          <button id="tipsCloseBtn" class="tips-close-btn" type="button">Close</button>
+        </div>
+        <ul id="tipsList" class="tips-list">
+          <li>Choose the color tier for each piece to define its points value. High point pieces are prioritized by the solver!</li>
+          <li>Click any component icon to rotate it 90 degrees. Keep clicking to cycle through all rotations.</li>
+          <li>Use `Long (3x)` depth with `Extended search` for better variety and stronger alternate layouts.</li>
+          <li>If you care about specific components, enable `Advanced Priority Mode (strict)` and select those components.</li>
+          <li>Keep `Prioritize full board fill` ON when full-board outcomes matter most.</li>
+          <li>If results look similar, press `Another Layout` to see alternate high-scoring layouts.</li>
+        </ul>
+      </div>
+    </div>
+
+    <section id="statsPanel" class="panel stats-panel">
+      <div class="stats-panel-head">
+        <h3 class="stats-panel-title">Advanced settings</h3>
+        <button id="statsToggleBtn" class="stats-toggle-btn" type="button" aria-expanded="true" aria-controls="statsPanelBody">
+          <span class="stats-toggle-label">Collapse</span>
+          <span class="stats-toggle-chevron" aria-hidden="true">▾</span>
+        </button>
+      </div>
+
+      <div id="statsPanelBody" class="stats-panel-body">
+        <div class="beta-row">
+          <label class="live-toggle" for="liveToggle">
+            <input id="liveToggle" type="checkbox" />
+            <span>Live calculation (Beta)</span>
+          </label>
+        </div>
+        <p id="liveCalcHelpText" class="advanced-help-text" hidden>Auto-calculates as you change inputs.</p>
+        <div class="beta-row" hidden>
+          <label class="live-toggle" for="fillPriorityToggle">
+            <input id="fillPriorityToggle" type="checkbox" checked />
+            <span>Prioritize full board fill</span>
+          </label>
+        </div>
+        <div id="advancedModeSection" class="advanced-mode-card advanced-mode-section">
+          <div class="advanced-mode-section-head">
+            <h4 class="advanced-mode-heading">Advanced Priority Mode (Beta)</h4>
+            <button id="advancedModeToggleBtn" class="stats-toggle-btn" type="button" aria-expanded="false" aria-controls="advancedModeSectionBody">
+              <span class="advanced-mode-toggle-label">Expand</span>
+              <span class="stats-toggle-chevron" aria-hidden="true">▾</span>
+            </button>
+          </div>
+          <div id="advancedModeSectionBody" class="advanced-mode-section-body">
+            <div class="advanced-mode-options" role="radiogroup" aria-label="Advanced Priority Mode (Beta)">
+              <label class="advanced-mode-option" for="modeBalanced">
+                <input id="modeBalanced" type="radio" name="advancedMode" value="balanced" checked />
+                <span>Balanced (Tiers & points first)</span>
+              </label>
+              <label class="advanced-mode-option" for="modePreferSelected">
+                <input id="modePreferSelected" type="radio" name="advancedMode" value="preferSelected" />
+                <span>Prefer selected components (soft)</span>
+              </label>
+              <label class="advanced-mode-option" for="modeStrictSelected">
+                <input id="modeStrictSelected" type="radio" name="advancedMode" value="strictSelected" />
+                <span>Prioritize selected components (strict)</span>
+              </label>
+            </div>
+
+            <div id="priorityComponents" class="priority-components">
+              <p class="priority-components-title">Priority components</p>
+              <div id="priorityComponentsGrid" class="priority-components-grid"></div>
+            </div>
+
+            <p id="advancedModeWarning" class="advanced-mode-warning"></p>
+          </div>
+        </div>
+        <div class="advanced-mode-card">
+          <h4 class="advanced-mode-heading">Calculation depth</h4>
+          <div class="advanced-mode-options" role="radiogroup" aria-label="Calculation depth">
+            <label class="advanced-mode-option" for="depthShort">
+              <input id="depthShort" type="radio" name="calcDepth" value="short" />
+              <span>Short (1x)</span>
+            </label>
+            <label class="advanced-mode-option" for="depthMedium">
+              <input id="depthMedium" type="radio" name="calcDepth" value="medium" />
+              <span>Medium (1.5x)</span>
+            </label>
+            <label class="advanced-mode-option" for="depthLong">
+              <input id="depthLong" type="radio" name="calcDepth" value="long" checked />
+              <span>Long (3x)</span>
+            </label>
+          </div>
+          <div class="beta-row">
+            <label class="live-toggle" for="extendedSearchToggle">
+              <input id="extendedSearchToggle" type="checkbox" checked />
+              <span>Extended search (Top 4 + best so far)</span>
+            </label>
+          </div>
+          <p class="advanced-help-text">Higher depth takes longer, but can find better and more varied layouts.</p>
+        </div>
+        <p class="rules">
+          Score priority: <strong>1) Piece points based on selected tier</strong>, <strong>2) completed rows</strong>, then tie-break by fewer trapped holes.
+        </p>
+
+        <div id="statsSection" class="stats-section">
+          <div class="stats-section-head">
+            <h4 class="stats-section-title">Stats</h4>
+            <button id="statsSectionToggleBtn" class="stats-toggle-btn" type="button" aria-expanded="true" aria-controls="statsSectionBody">
+              <span class="stats-section-toggle-label">Collapse</span>
+              <span class="stats-toggle-chevron" aria-hidden="true">▾</span>
+            </button>
+          </div>
+
+          <div id="statsSectionBody" class="stats-section-body">
+            <div class="stats-grid">
+              <div class="stat"><span class="label">Total points</span><span id="statPoints" class="value" style="color:#e0a82e; font-size:1.05rem;">0</span></div>
+              <div class="stat"><span class="label">Lines completed</span><span id="statLines" class="value">0</span></div>
+              <div class="stat"><span class="label">Cells filled</span><span id="statFilled" class="value">0</span></div>
+              <div class="stat"><span class="label">Cells empty</span><span id="statEmpty" class="value">56</span></div>
+              <div class="stat"><span class="label">Placements searched</span><span id="statPlacements" class="value">0</span></div>
+              <div class="stat"><span class="label">States searched</span><span id="statStates" class="value">0</span></div>
+              <div class="stat"><span class="label">Solve time (ms)</span><span id="statSolveMs" class="value">0.00</span></div>
+            </div>
+
+            <div id="usageGrid" class="usage-grid"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // Tier/Color definitions with points and diamond pattern attributes
+      const COLOR_TIERS = [
+        { value: 1, label: 'Green (1 pt)', color: '#71d487', hasDiamonds: false },
+        { value: 2, label: 'Blue (2 pts)', color: '#46a8ff', hasDiamonds: false },
+        { value: 3, label: 'Purple (3 pts)', color: '#9d6dff', hasDiamonds: false },
+        { value: 4, label: 'Purple ♦ (4 pts)', color: '#9d6dff', hasDiamonds: true },
+        { value: 5, label: 'Yellow (5 pts)', color: '#ffd66f', hasDiamonds: false },
+        { value: 6, label: 'Yellow ♦ (6 pts)', color: '#ffd66f', hasDiamonds: true },
+        { value: 7, label: 'Red (7 pts)', color: '#ff5c5c', hasDiamonds: false }
+      ];
+
+      const BOARD_WIDTH_OPTIONS = [7, 9, 12];
+      const params = new URLSearchParams(window.location.search);
+      const requestedCols = Number(params.get('w'));
+      const COLS = BOARD_WIDTH_OPTIONS.includes(requestedCols) ? requestedCols : 7;
+      const ROWS = 8;
+      const CELLS = COLS * ROWS;
+      const PIECE_SIZE = 4;
+      const MAX_INPUT = 20;
+      const MAX_USABLE_PIECES = CELLS / PIECE_SIZE;
+      const INPUT_DEBOUNCE_MS = 420;
+      const WORKER_RETRY_LIMIT = 1;
+      const VARIANT_MAX_ATTEMPTS = 64;
+      const MOBILE_LAYOUT_BREAKPOINT = 860;
+
+      // Default counts and tier mapping
+      const DEFAULT_COUNTS = { A: 3, B: 2, C: 4, D: 2, E: 3 };
+      const DEFAULT_TIERS = { A: 3, B: 7, C: 2, D: 1, E: 4 };
+
+      const ADVANCED_MODE = Object.freeze({
+        BALANCED: 'balanced',
+        PREFER_SELECTED: 'preferSelected',
+        STRICT_SELECTED: 'strictSelected'
+      });
+      const CALC_DEPTH = Object.freeze({
+        SHORT: 'short',
+        MEDIUM: 'medium',
+        LONG: 'long'
+      });
+      const CALC_DEPTH_SCALE = Object.freeze({
+        [CALC_DEPTH.SHORT]: 1,
+        [CALC_DEPTH.MEDIUM]: 1.5,
+        [CALC_DEPTH.LONG]: 3
+      });
+      const LOCAL_STATE_KEY = 'survivorio-spacecalc-state:v5'; // Bumped version for multiple colors selector state
+      const LOCAL_STATE_VERSION = 5;
+      const LOCAL_STATE_SAVE_DEBOUNCE_MS = 140;
+      const MAX_RANKED_LAYOUTS = 4;
+
+      const PIECES = [
+        { id: 'A', name: 'Piece A', color: '#9d6dff', cells: [[0,0],[0,1],[0,2],[1,1]] },
+        { id: 'B', name: 'Piece B', color: '#ff5c5c', cells: [[0,0],[0,1],[0,2],[1,0]] },
+        { id: 'C', name: 'Piece C', color: '#46a8ff', cells: [[0,0],[1,0],[0,1],[1,1]] },
+        { id: 'D', name: 'Piece D', color: '#71d487', cells: [[0,0],[1,0],[1,1],[1,2]] },
+        { id: 'E', name: 'Piece E', color: '#9d6dff', cells: [[0,0],[0,1],[0,2],[0,3]] }
+      ];
+
+      let BIT_MASKS = null;
+      let FULL_MASK = 0n;
+      let PREFIX_MASKS = null;
+      let SUFFIX_MASKS = null;
+      let rotationsByPiece = null;
+      let placements = null;
+      let placementsByAnchor = null;
+
+      // ------------------------------
+      // Rendering setup
+      // ------------------------------
+      const boardEl = document.getElementById('board');
+      const boardShellEl = document.querySelector('.board-shell');
+      const boardWidthBtns = Array.from(document.querySelectorAll('.board-width-btn'));
+      const inventoryGridEl = document.getElementById('inventoryGrid');
+      const usageGridEl = document.getElementById('usageGrid');
+      const statsPanelEl = document.getElementById('statsPanel');
+      const statsToggleBtnEl = document.getElementById('statsToggleBtn');
+      const advancedModeSectionEl = document.getElementById('advancedModeSection');
+      const advancedModeToggleBtnEl = document.getElementById('advancedModeToggleBtn');
+      const statsSectionEl = document.getElementById('statsSection');
+      const statsSectionToggleBtnEl = document.getElementById('statsSectionToggleBtn');
+      const spinnerEl = document.getElementById('spinner');
+      const statusTextEl = document.getElementById('statusText');
+      const statusMetaEl = document.getElementById('statusMeta');
+      const liveToggleEl = document.getElementById('liveToggle');
+      const liveCalcHelpTextEl = document.getElementById('liveCalcHelpText');
+      const fillPriorityToggleEl = document.getElementById('fillPriorityToggle');
+      const extendedSearchToggleEl = document.getElementById('extendedSearchToggle');
+      const advancedModeInputEls = Array.from(document.querySelectorAll('input[name="advancedMode"]'));
+      const calcDepthInputEls = Array.from(document.querySelectorAll('input[name="calcDepth"]'));
+      const priorityComponentsEl = document.getElementById('priorityComponents');
+      const priorityComponentsGridEl = document.getElementById('priorityComponentsGrid');
+      const advancedModeWarningEl = document.getElementById('advancedModeWarning');
+      const rulesEl = document.querySelector('.rules');
+      const calculateBtnEl = document.getElementById('calculateBtn');
+      const stopBtnEl = document.getElementById('stopBtn');
+      const anotherLayoutBtnEl = document.getElementById('anotherLayoutBtn');
+      const resetBtnEl = document.getElementById('resetBtn');
+      const layoutOptionsEl = document.getElementById('layoutOptions');
+      const componentsHelpBtnEl = document.getElementById('componentsHelpBtn');
+      const tipsModalEl = document.getElementById('tipsModal');
+      const tipsCloseBtnEl = document.getElementById('tipsCloseBtn');
+
+      const statEls = {
+        points: document.getElementById('statPoints'),
+        lines: document.getElementById('statLines'),
+        filled: document.getElementById('statFilled'),
+        empty: document.getElementById('statEmpty'),
+        placements: document.getElementById('statPlacements'),
+        states: document.getElementById('statStates'),
+        solveMs: document.getElementById('statSolveMs')
+      };
+
+      const boardCells = [];
+      const inputsById = {};
+      const usageCardsById = {};
+      const priorityPieceCheckboxesById = {};
+      const inventoryShapeWrapById = {};
+      const pieceRotationById = {};
+      const SVG_NS = 'http://www.w3.org/2000/svg';
+      const rowHighlightEls = [];
+      let rowHighlightLayer = null;
+      let pieceOutlineLayer = null;
+      let boardLoadingTextEl = null;
+      let lastRenderedResult = null;
+
+      initializeBoardSizeUi();
+      createBoardCells();
+      createInventoryControls();
+      createUsageCards();
+      createPriorityComponentControls();
+
+      let solveDebounceTimer = null;
+      let solveToken = 0;
+      const resultCache = new Map();
+      const solveContextByToken = new Map();
+      const layoutHistoryByCounts = new Map();
+      let resizeRaf = 0;
+      let liveCalculationEnabled = false;
+      let isCalculating = false;
+      let hasPendingChanges = false;
+      let solverWorker = null;
+      let activeWorkerRequestId = 0;
+      let solverWorkerSourceCache = '';
+      let solverWorkerScriptUrl = '';
+      const workerSupported = typeof Worker !== 'undefined';
+      let solveStartedAt = 0;
+      let progressTimerId = 0;
+      let layoutVariantNonce = 0;
+      let persistStateTimer = 0;
+      let isApplyingPersistedState = false;
+      let lastProgressSnapshotSignature = '';
+      let latestRankedLayouts = [];
+      let activeRankedLayoutIndex = 0;
+      let persistedAppState = loadPersistedAppState();
+      applyPersistedAppState(persistedAppState);
+      syncAdvancedModeUi();
+      updateRulesText();
+      persistStateNow();
+
+      window.addEventListener('resize', () => {
+        updateResponsiveBoardCellSize();
+        if (latestRankedLayouts.length) {
+          renderLayoutOptions();
+        }
+        if (!lastRenderedResult || resizeRaf) return;
+        resizeRaf = requestAnimationFrame(() => {
+          resizeRaf = 0;
+          updateRowHighlights(getCompleteRows(lastRenderedResult.board));
+          drawPieceOutlines(lastRenderedResult.board, lastRenderedResult.boardInstance);
+        });
+      });
+      window.addEventListener('beforeunload', () => {
+        persistStateNow();
+        if (solverWorkerScriptUrl) {
+          URL.revokeObjectURL(solverWorkerScriptUrl);
+          solverWorkerScriptUrl = '';
+        }
+      });
+
+      statsToggleBtnEl.addEventListener('click', () => {
+        setStatsCollapsed(!statsPanelEl.classList.contains('collapsed'));
+      });
+      if (advancedModeToggleBtnEl && advancedModeSectionEl) {
+        advancedModeToggleBtnEl.addEventListener('click', () => {
+          setAdvancedModeCollapsed(!advancedModeSectionEl.classList.contains('collapsed'));
+        });
+      }
+      if (statsSectionToggleBtnEl && statsSectionEl) {
+        statsSectionToggleBtnEl.addEventListener('click', () => {
+          setStatsSectionCollapsed(!statsSectionEl.classList.contains('collapsed'));
+        });
+      }
+
+      resetBtnEl.addEventListener('click', () => {
+        for (const piece of PIECES) {
+          inputsById[piece.id].value = DEFAULT_COUNTS[piece.id];
+          persistedAppState.global.componentInstanceTiers[piece.id] = new Array(DEFAULT_COUNTS[piece.id]).fill(DEFAULT_TIERS[piece.id]);
+          updatePieceInstancesUi(piece.id);
+        }
+        syncTiersAndStyles();
+        schedulePersistState();
+        scheduleSolve(false);
+      });
+
+      liveToggleEl.addEventListener('change', () => {
+        liveCalculationEnabled = liveToggleEl.checked;
+        updateLiveCalculationHelpVisibility();
+        if (!liveCalculationEnabled) {
+          cancelCurrentSolve('Manual mode: press Calculate');
+          hasPendingChanges = true;
+          setStatus(false, 'Manual mode: press Calculate');
+        } else if (hasPendingChanges) {
+          scheduleSolve(true);
+        } else {
+          setStatus(false, 'Live mode enabled');
+        }
+        schedulePersistState();
+        updateCalcControls();
+      });
+
+      for (const modeInput of advancedModeInputEls) {
+        modeInput.addEventListener('change', () => {
+          resultCache.clear();
+          layoutHistoryByCounts.clear();
+          syncAdvancedModeUi();
+          updateRulesText();
+          schedulePersistState();
+          scheduleSolve(false);
+        });
+      }
+      for (const depthInput of calcDepthInputEls) {
+        depthInput.addEventListener('change', () => {
+          resultCache.clear();
+          layoutHistoryByCounts.clear();
+          updateRulesText();
+          schedulePersistState();
+          scheduleSolve(false);
+        });
+      }
+      if (fillPriorityToggleEl) {
+        fillPriorityToggleEl.addEventListener('change', () => {
+          resultCache.clear();
+          layoutHistoryByCounts.clear();
+          updateRulesText();
+          schedulePersistState();
+          scheduleSolve(false);
+        });
+      }
+      if (extendedSearchToggleEl) {
+        extendedSearchToggleEl.addEventListener('change', () => {
+          resultCache.clear();
+          layoutHistoryByCounts.clear();
+          schedulePersistState();
+          scheduleSolve(false);
+        });
+      }
+
+      calculateBtnEl.addEventListener('click', () => {
+        startSolve('manual');
+      });
+      if (stopBtnEl) {
+        stopBtnEl.addEventListener('click', () => {
+          if (!isCalculating) return;
+          cancelCurrentSolve('Stopped. Showing best so far.');
+        });
+      }
+      anotherLayoutBtnEl.addEventListener('click', () => {
+        startSolve('variant');
+      });
+
+      if (componentsHelpBtnEl && tipsModalEl && tipsCloseBtnEl) {
+        componentsHelpBtnEl.addEventListener('click', () => setTipsModalOpen(true));
+        tipsCloseBtnEl.addEventListener('click', () => setTipsModalOpen(false));
+        tipsModalEl.addEventListener('click', (event) => {
+          if (event.target === tipsModalEl) setTipsModalOpen(false);
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && !tipsModalEl.hidden) {
+            setTipsModalOpen(false);
+          }
+        });
+      }
+
+      if (liveCalculationEnabled) {
+        setStatus(false, 'Live mode enabled');
+        scheduleSolve(true);
+      } else {
+        setStatus(false, 'Manual mode: press Calculate');
+      }
+      updateCalcControls();
+
+      function setTipsModalOpen(open) {
+        if (!tipsModalEl || !componentsHelpBtnEl) return;
+        tipsModalEl.hidden = !open;
+        componentsHelpBtnEl.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+
+      function initializeBoardSizeUi() {
+        boardEl.style.setProperty('--board-cols', String(COLS));
+        boardEl.setAttribute('aria-label', `${COLS} by ${ROWS} board`);
+        updateResponsiveBoardCellSize();
+        for (const btn of boardWidthBtns) {
+          const cols = Number(btn.dataset.cols || '7');
+          const active = cols === COLS;
+          btn.classList.toggle('active', active);
+          btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+          btn.addEventListener('click', () => {
+            if (cols === COLS) return;
+            persistStateNow();
+            const next = new URL(window.location.href);
+            next.searchParams.set('w', String(cols));
+            window.location.href = next.toString();
+          });
+        }
+      }
+
+      function updateResponsiveBoardCellSize() {
+        if (!boardEl) return;
+        const viewportWidth = Math.max(0, window.innerWidth || document.documentElement.clientWidth || 0);
+        const viewportHeight = Math.max(0, window.innerHeight || document.documentElement.clientHeight || 0);
+        if (!viewportWidth || !viewportHeight || viewportWidth > MOBILE_LAYOUT_BREAKPOINT) {
+          boardEl.style.removeProperty('--cell-size');
+          return;
+        }
+
+        const gap = 3;
+        const gridChrome = 10;
+        let shellInnerWidth = 0;
+        if (boardShellEl && boardShellEl.clientWidth > 0) {
+          const shellStyles = getComputedStyle(boardShellEl);
+          const shellPadLeft = Number.parseFloat(shellStyles.paddingLeft) || 0;
+          const shellPadRight = Number.parseFloat(shellStyles.paddingRight) || 0;
+          shellInnerWidth = Math.max(0, boardShellEl.clientWidth - shellPadLeft - shellPadRight);
+        }
+        const widthMargin = viewportWidth <= 620 ? 24 : 32;
+        const widthBudget = shellInnerWidth > 0 ? shellInnerWidth : Math.max(160, viewportWidth - widthMargin);
+        const widthLimitedCell = Math.floor((widthBudget - ((COLS - 1) * gap) - gridChrome) / COLS);
+
+        const targetHeightRatio = COLS >= 12 ? 0.28 : (COLS >= 9 ? 0.32 : 0.36);
+        const heightBudget = Math.max(160, Math.floor(viewportHeight * targetHeightRatio));
+        const heightLimitedCell = Math.floor((heightBudget - ((ROWS - 1) * gap) - gridChrome) / ROWS);
+
+        const nextCellSize = Math.max(10, Math.min(56, widthLimitedCell, heightLimitedCell));
+        if (!Number.isFinite(nextCellSize) || nextCellSize <= 0) {
+          boardEl.style.removeProperty('--cell-size');
+          return;
+        }
+        boardEl.style.setProperty('--cell-size', `${nextCellSize}px`);
+      }
+
+      function createPriorityComponentControls() {
+        if (!priorityComponentsGridEl) return;
+        priorityComponentsGridEl.innerHTML = '';
+        for (const piece of PIECES) {
+          const pill = document.createElement('label');
+          pill.className = 'priority-component-pill';
+          pill.setAttribute('for', `priorityPiece${piece.id}`);
+
+          const input = document.createElement('input');
+          input.id = `priorityPiece${piece.id}`;
+          input.type = 'checkbox';
+          input.checked = false;
+          input.setAttribute('aria-label', `Prioritize ${piece.name}`);
+          pill.title = piece.name;
+
+          const iconWrap = document.createElement('span');
+          iconWrap.className = 'priority-component-icon';
+          renderPieceShape(iconWrap, piece.cells, piece.color, 0, piece.id);
+
+          input.addEventListener('change', () => {
+            updateRulesText();
+            schedulePersistState();
+            if (!isComponentPriorityMode(getActiveAdvancedMode())) return;
+            resultCache.clear();
+            layoutHistoryByCounts.clear();
+            scheduleSolve(false);
+          });
+
+          pill.appendChild(input);
+          pill.appendChild(iconWrap);
+          priorityComponentsGridEl.appendChild(pill);
+          priorityPieceCheckboxesById[piece.id] = input;
+        }
+      }
+
+      function getActiveAdvancedMode() {
+        const active = advancedModeInputEls.find((input) => input.checked);
+        return active ? active.value : ADVANCED_MODE.BALANCED;
+      }
+
+      function getActiveCalcDepth() {
+        const active = calcDepthInputEls.find((input) => input.checked);
+        return active ? active.value : CALC_DEPTH.LONG;
+      }
+
+      function getCalcDepthScale(depth) {
+        return CALC_DEPTH_SCALE[depth] || CALC_DEPTH_SCALE[CALC_DEPTH.SHORT];
+      }
+
+      function isComponentPriorityMode(mode) {
+        return mode === ADVANCED_MODE.PREFER_SELECTED || mode === ADVANCED_MODE.STRICT_SELECTED;
+      }
+
+      function getSelectedPriorityMask() {
+        let mask = 0;
+        for (let i = 0; i < PIECES.length; i++) {
+          const piece = PIECES[i];
+          const input = priorityPieceCheckboxesById[piece.id];
+          if (input && input.checked) {
+            mask |= (1 << i);
+          }
+        }
+        return mask;
+      }
+
+      function getSelectedPriorityIds(mask = getSelectedPriorityMask()) {
+        const ids = [];
+        for (let i = 0; i < PIECES.length; i++) {
+          if ((mask & (1 << i)) !== 0) {
+            ids.push(PIECES[i].id);
+          }
+        }
+        return ids;
+      }
+
+      function syncAdvancedModeUi() {
+        const mode = getActiveAdvancedMode();
+        const enablePriority = isComponentPriorityMode(mode);
+        if (priorityComponentsEl) {
+          priorityComponentsEl.classList.toggle('is-disabled', !enablePriority);
+        }
+        for (const piece of PIECES) {
+          const input = priorityPieceCheckboxesById[piece.id];
+          if (input) {
+            input.disabled = !enablePriority;
+          }
+        }
+      }
+
+      function setStatsCollapsed(collapsed, shouldPersist = true) {
+        statsPanelEl.classList.toggle('collapsed', collapsed);
+        statsToggleBtnEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        const label = statsToggleBtnEl.querySelector('.stats-toggle-label');
+        if (label) {
+          label.textContent = collapsed ? 'Expand' : 'Collapse';
+        }
+        if (shouldPersist) schedulePersistState();
+      }
+
+      function setStatsSectionCollapsed(collapsed, shouldPersist = true) {
+        if (!statsSectionEl || !statsSectionToggleBtnEl) return;
+        statsSectionEl.classList.toggle('collapsed', collapsed);
+        statsSectionToggleBtnEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        const label = statsSectionToggleBtnEl.querySelector('.stats-section-toggle-label');
+        if (label) {
+          label.textContent = collapsed ? 'Expand' : 'Collapse';
+        }
+        if (shouldPersist) schedulePersistState();
+      }
+
+      function setAdvancedModeCollapsed(collapsed, shouldPersist = true) {
+        if (!advancedModeSectionEl || !advancedModeToggleBtnEl) return;
+        advancedModeSectionEl.classList.toggle('collapsed', collapsed);
+        advancedModeToggleBtnEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        const label = advancedModeToggleBtnEl.querySelector('.advanced-mode-toggle-label');
+        if (label) {
+          label.textContent = collapsed ? 'Expand' : 'Collapse';
+        }
+        if (shouldPersist) schedulePersistState();
+      }
+
+      function updateAdvancedModeWarning(mode, selectedIds, prioritizeFullBoard) {
+        if (!advancedModeWarningEl) return;
+        advancedModeWarningEl.classList.remove('is-default');
+        if (mode === ADVANCED_MODE.BALANCED) {
+          advancedModeWarningEl.classList.add('is-default');
+          advancedModeWarningEl.innerHTML = '<strong>Standard Point Optimization:</strong> The engine automatically maximizes total points (based on tier values) and completes rows.';
+          return;
+        }
+        if (!selectedIds.length) {
+          advancedModeWarningEl.innerHTML = '<strong>Warning:</strong> Priority mode is active but no components are selected, so scoring falls back to standard point/row optimization.';
+          return;
+        }
+        if (mode === ADVANCED_MODE.PREFER_SELECTED) {
+          advancedModeWarningEl.innerHTML = `<strong>Warning:</strong> Soft priority for selected components (${selectedIds.join(', ')}) will trade off global point efficiency for specific component counts.`;
+          return;
+        }
+        advancedModeWarningEl.innerHTML = `<strong>Warning:</strong> Strict priority for selected components (${selectedIds.join(', ')}) will strictly try to fit these first, potentially reducing overall board points.`;
+      }
+
+      function updateLiveCalculationHelpVisibility() {
+        if (!liveCalcHelpTextEl || !liveToggleEl) return;
+        liveCalcHelpTextEl.hidden = !liveToggleEl.checked;
+      }
+
+      function getDefaultPersistedState() {
+        return {
+          version: LOCAL_STATE_VERSION,
+          global: {
+            liveCalculationEnabled: false,
+            prioritizeFullBoard: true,
+            extendedSearch: true,
+            advancedMode: ADVANCED_MODE.BALANCED,
+            calcDepth: CALC_DEPTH.LONG,
+            priorityMask: 0,
+            componentCounts: getDefaultCountsById(),
+            componentInstanceTiers: getDefaultInstanceTiersById(),
+            componentRotations: getDefaultRotationsById(),
+            panel: {
+              advancedSettingsCollapsed: false,
+              advancedPriorityCollapsed: true,
+              statsCollapsed: true
+            }
+          },
+          boards: {}
+        };
+      }
+
+      function getDefaultCountsById() {
+        const counts = {};
+        for (const piece of PIECES) {
+          counts[piece.id] = clampInt(DEFAULT_COUNTS[piece.id], 0, MAX_INPUT);
+        }
+        return counts;
+      }
+
+      function getDefaultInstanceTiersById(counts = getDefaultCountsById()) {
+        const tiers = {};
+        for (const piece of PIECES) {
+          const qty = counts[piece.id] || 0;
+          tiers[piece.id] = new Array(qty).fill(DEFAULT_TIERS[piece.id]);
+        }
+        return tiers;
+      }
+
+      function normalizeCountsById(rawCounts) {
+        const defaults = getDefaultCountsById();
+        const source = rawCounts && typeof rawCounts === 'object' ? rawCounts : {};
+        const counts = {};
+        for (const piece of PIECES) {
+          const value = Object.prototype.hasOwnProperty.call(source, piece.id) ? source[piece.id] : defaults[piece.id];
+          counts[piece.id] = clampInt(value, 0, MAX_INPUT);
+        }
+        return counts;
+      }
+
+      function normalizeInstanceTiersById(rawTiers, counts) {
+        const defaults = getDefaultInstanceTiersById(counts);
+        const source = rawTiers && typeof rawTiers === 'object' ? rawTiers : {};
+        const tiers = {};
+        for (const piece of PIECES) {
+          const qty = counts[piece.id] || 0;
+          const arr = Array.isArray(source[piece.id]) ? source[piece.id] : [];
+          const resultArr = [];
+          for (let i = 0; i < qty; i++) {
+            const val = arr[i] !== undefined ? Number(arr[i]) : (defaults[piece.id][i] || DEFAULT_TIERS[piece.id]);
+            resultArr.push(clampInt(val, 1, 7));
+          }
+          tiers[piece.id] = resultArr;
+        }
+        return tiers;
+      }
+
+      function getDefaultRotationsById() {
+        const rotations = {};
+        for (const piece of PIECES) {
+          rotations[piece.id] = 0;
+        }
+        return rotations;
+      }
+
+      function normalizeRotationsById(rawRotations) {
+        const defaults = getDefaultRotationsById();
+        const source = rawRotations && typeof rawRotations === 'object' ? rawRotations : {};
+        const rotations = {};
+        for (const piece of PIECES) {
+          const value = Object.prototype.hasOwnProperty.call(source, piece.id) ? source[piece.id] : defaults[piece.id];
+          rotations[piece.id] = ((clampInt(value, 0, 3) % 4) + 4) % 4;
+        }
+        return rotations;
+      }
+
+      function normalizePersistedAppState(rawState) {
+        const defaults = getDefaultPersistedState();
+        const safeState = rawState && typeof rawState === 'object' ? rawState : {};
+        const safeGlobal = safeState.global && typeof safeState.global === 'object' ? safeState.global : {};
+        const safePanel = safeGlobal.panel && typeof safeGlobal.panel === 'object' ? safeGlobal.panel : {};
+        const advancedMode = Object.values(ADVANCED_MODE).includes(safeGlobal.advancedMode) ? safeGlobal.advancedMode : defaults.global.advancedMode;
+        const calcDepth = Object.values(CALC_DEPTH).includes(safeGlobal.calcDepth) ? safeGlobal.calcDepth : defaults.global.calcDepth;
+        const rawPriorityMask = Number(safeGlobal.priorityMask);
+        const maxMask = (1 << PIECES.length) - 1;
+        const priorityMask = Number.isFinite(rawPriorityMask) ? Math.max(0, Math.min(maxMask, Math.floor(rawPriorityMask))) : 0;
+
+        const boards = {};
+        const safeBoards = safeState.boards && typeof safeState.boards === 'object' ? safeState.boards : {};
+        for (const width of BOARD_WIDTH_OPTIONS) {
+          const key = String(width);
+          const boardEntry = safeBoards[key];
+          if (!boardEntry || typeof boardEntry !== 'object') continue;
+          boards[key] = {
+            counts: normalizeCountsById(boardEntry.counts)
+          };
+        }
+
+        let componentCounts = normalizeCountsById(safeGlobal.componentCounts);
+        let componentInstanceTiers = normalizeInstanceTiersById(safeGlobal.componentInstanceTiers, componentCounts);
+        const componentRotations = normalizeRotationsById(safeGlobal.componentRotations);
+
+        return {
+          version: LOCAL_STATE_VERSION,
+          global: {
+            liveCalculationEnabled: !!safeGlobal.liveCalculationEnabled,
+            prioritizeFullBoard: safeGlobal.prioritizeFullBoard !== false,
+            extendedSearch: safeGlobal.extendedSearch !== false,
+            advancedMode,
+            calcDepth,
+            priorityMask,
+            componentCounts,
+            componentInstanceTiers,
+            componentRotations,
+            panel: {
+              advancedSettingsCollapsed: !!safePanel.advancedSettingsCollapsed,
+              advancedPriorityCollapsed: safePanel.advancedPriorityCollapsed !== false,
+              statsCollapsed: safePanel.statsCollapsed !== false
+            }
+          },
+          boards
+        };
+      }
+
+      function loadPersistedAppState() {
+        try {
+          const raw = window.localStorage.getItem(LOCAL_STATE_KEY);
+          if (!raw) return normalizePersistedAppState(null);
+          return normalizePersistedAppState(JSON.parse(raw));
+        } catch (error) {
+          return normalizePersistedAppState(null);
+        }
+      }
+
+      function setRadioByValue(inputs, value, fallbackValue) {
+        let matched = false;
+        for (const input of inputs) {
+          const active = input.value === value;
+          input.checked = active;
+          matched = matched || active;
+        }
+        if (!matched) {
+          for (const input of inputs) {
+            const active = input.value === fallbackValue;
+            input.checked = active;
+            matched = matched || active;
+          }
+        }
+        if (!matched && inputs.length) {
+          inputs[0].checked = true;
+        }
+      }
+
+      function applyPersistedAppState(state) {
+        const normalized = normalizePersistedAppState(state);
+        persistedAppState = normalized;
+        isApplyingPersistedState = true;
+        try {
+          setRadioByValue(advancedModeInputEls, normalized.global.advancedMode, ADVANCED_MODE.BALANCED);
+          setRadioByValue(calcDepthInputEls, normalized.global.calcDepth, CALC_DEPTH.LONG);
+
+          if (fillPriorityToggleEl) {
+            fillPriorityToggleEl.checked = !!normalized.global.prioritizeFullBoard;
+          }
+          if (extendedSearchToggleEl) {
+            extendedSearchToggleEl.checked = !!normalized.global.extendedSearch;
+          }
+          liveToggleEl.checked = !!normalized.global.liveCalculationEnabled;
+          liveCalculationEnabled = liveToggleEl.checked;
+          updateLiveCalculationHelpVisibility();
+
+          for (let i = 0; i < PIECES.length; i++) {
+            const input = priorityPieceCheckboxesById[PIECES[i].id];
+            if (!input) continue;
+            input.checked = (normalized.global.priorityMask & (1 << i)) !== 0;
+          }
+
+          const sharedCounts = normalizeCountsById(normalized.global.componentCounts);
+          const sharedRotations = normalizeRotationsById(normalized.global.componentRotations);
+
+          for (const piece of PIECES) {
+            const input = inputsById[piece.id];
+            if (input) {
+              input.value = String(clampInt(sharedCounts[piece.id], 0, MAX_INPUT));
+            }
+            pieceRotationById[piece.id] = sharedRotations[piece.id];
+            updatePieceInstancesUi(piece.id);
+          }
+
+          // Apply initial dynamic styling based on loaded tiers
+          syncTiersAndStyles();
+
+          setStatsCollapsed(!!normalized.global.panel.advancedSettingsCollapsed, false);
+          setAdvancedModeCollapsed(!!normalized.global.panel.advancedPriorityCollapsed, false);
+          setStatsSectionCollapsed(!!normalized.global.panel.statsCollapsed, false);
+        } finally {
+          isApplyingPersistedState = false;
+        }
+      }
+
+      // Automatically populates instance selectors inside each card based on count
+      // Automatically populates instance selectors inside each card based on count
+      function updatePieceInstancesUi(pieceId) {
+        const container = document.getElementById(`instances-${pieceId}`);
+        if (!container) return;
+        const qty = clampInt(inputsById[pieceId].value, 0, MAX_INPUT);
+        
+        let currentTiers = persistedAppState.global.componentInstanceTiers[pieceId] || [];
+        
+        if (currentTiers.length < qty) {
+          while (currentTiers.length < qty) {
+            const val = currentTiers.length > 0 ? currentTiers[currentTiers.length - 1] : DEFAULT_TIERS[pieceId];
+            currentTiers.push(val);
+          }
+        } else if (currentTiers.length > qty) {
+          currentTiers = currentTiers.slice(0, qty);
+        }
+        persistedAppState.global.componentInstanceTiers[pieceId] = currentTiers;
+
+        container.innerHTML = '';
+        for (let i = 0; i < qty; i++) {
+          const row = document.createElement('div');
+          row.className = 'instance-row';
+
+          const label = document.createElement('span');
+          label.className = 'instance-label';
+          label.textContent = `#${i + 1}`;
+
+          const select = document.createElement('select');
+          select.className = 'instance-select';
+          
+          COLOR_TIERS.forEach(tier => {
+            const option = document.createElement('option');
+            option.value = String(tier.value);
+            // Compact select option labels
+            option.textContent = tier.label.replace(' (1 pt)', '').replace(' (2 pts)', '').replace(' (3 pts)', '').replace(' ♦ (4 pts)', ' ♦').replace(' (5 pts)', '').replace(' ♦ (6 pts)', ' ♦').replace(' (7 pts)', '');
+            option.style.backgroundColor = tier.color;
+            option.style.color = '#111';
+            select.appendChild(option);
+          });
+          
+          select.value = String(currentTiers[i]);
+          styleInstanceSelect(select, currentTiers[i]);
+
+          select.addEventListener('change', () => {
+            const nextVal = Number(select.value);
+            persistedAppState.global.componentInstanceTiers[pieceId][i] = nextVal;
+            styleInstanceSelect(select, nextVal);
+            
+            resultCache.clear();
+            layoutHistoryByCounts.clear();
+            syncTiersAndStyles();
+            updateRulesText();
+            schedulePersistState();
+            scheduleSolve(false);
+          });
+
+          row.appendChild(label);
+          row.appendChild(select);
+          container.appendChild(row);
+        }
+      }
+
+      function styleInstanceSelect(select, value) {
+        const info = COLOR_TIERS.find(t => t.value === Number(value));
+        if (info) {
+          select.style.backgroundColor = info.color;
+          select.style.color = '#111';
+          if (info.hasDiamonds) {
+            select.style.border = '1px dashed #ffffff';
+          } else {
+            select.style.border = '1px solid #202226';
+          }
+        }
+      }
+
+      function getSortedTiersForPiece(pieceId) {
+        const tiers = persistedAppState.global.componentInstanceTiers[pieceId] || [];
+        return tiers.slice().sort((a, b) => b - a); // always sort descending so highest point items fit first
+      }
+
+      // Read values from selects and apply dynamic palette and attributes
+      function syncTiersAndStyles() {
+        for (const piece of PIECES) {
+          const currentTiers = persistedAppState.global.componentInstanceTiers[piece.id] || [DEFAULT_TIERS[piece.id]];
+          // Base the wrapper's color on the highest value instance currently configured
+          const highestTier = currentTiers.length > 0 ? Math.max(...currentTiers) : DEFAULT_TIERS[piece.id];
+          const tierInfo = COLOR_TIERS.find(t => t.value === highestTier) || COLOR_TIERS[0];
+          
+          piece.color = tierInfo.color;
+          piece.outline = darkenHexToRgba(tierInfo.color, 0.15, 0.98);
+          piece.hasDiamonds = tierInfo.hasDiamonds;
+
+          const shapeWrap = inventoryShapeWrapById[piece.id];
+          if (shapeWrap) {
+            renderPieceShape(shapeWrap, piece.cells, piece.color, pieceRotationById[piece.id], piece.id);
+            setPieceShapeRotation(shapeWrap, pieceRotationById[piece.id], false);
+          }
+
+          // Sync other preview grids and labels
+          const pillIcon = document.querySelector(`#priorityPiece${piece.id} ~ .priority-component-icon`);
+          if (pillIcon) {
+            renderPieceShape(pillIcon, piece.cells, piece.color, 0, piece.id);
+          }
+
+          const usageCard = usageCardsById[piece.id];
+          if (usageCard) {
+            const usageIcon = usageCard.querySelector('.usage-piece-icon');
+            if (usageIcon) {
+              renderPieceShape(usageIcon, piece.cells, piece.color, 0, piece.id);
+            }
+          }
+        }
+      }
+
+      function collectCurrentComponentCounts() {
+        const counts = {};
+        for (const piece of PIECES) {
+          const input = inputsById[piece.id];
+          counts[piece.id] = clampInt(input ? input.value : DEFAULT_COUNTS[piece.id], 0, MAX_INPUT);
+        }
+        return counts;
+      }
+
+      function collectCurrentComponentInstanceTiers() {
+        const tiers = {};
+        for (const piece of PIECES) {
+          tiers[piece.id] = persistedAppState.global.componentInstanceTiers[piece.id] || [];
+        }
+        return tiers;
+      }
+
+      function collectCurrentComponentRotations() {
+        const rotations = {};
+        for (const piece of PIECES) {
+          const turns = Number(pieceRotationById[piece.id]);
+          rotations[piece.id] = Number.isFinite(turns) ? (((Math.floor(turns) % 4) + 4) % 4) : 0;
+        }
+        return rotations;
+      }
+
+      function collectCurrentGlobalState() {
+        return {
+          liveCalculationEnabled: !!liveToggleEl.checked,
+          prioritizeFullBoard: !!(fillPriorityToggleEl && fillPriorityToggleEl.checked),
+          extendedSearch: !!(extendedSearchToggleEl && extendedSearchToggleEl.checked),
+          advancedMode: getActiveAdvancedMode(),
+          calcDepth: getActiveCalcDepth(),
+          priorityMask: getSelectedPriorityMask(),
+          componentCounts: collectCurrentComponentCounts(),
+          componentInstanceTiers: collectCurrentComponentInstanceTiers(),
+          componentRotations: collectCurrentComponentRotations(),
+          panel: {
+            advancedSettingsCollapsed: !!(statsPanelEl && statsPanelEl.classList.contains('collapsed')),
+            advancedPriorityCollapsed: !!(advancedModeSectionEl && advancedModeSectionEl.classList.contains('collapsed')),
+            statsCollapsed: !!(statsSectionEl && statsSectionEl.classList.contains('collapsed'))
+          }
+        };
+      }
+
+      function persistStateNow() {
+        if (isApplyingPersistedState) return;
+        if (persistStateTimer) {
+          clearTimeout(persistStateTimer);
+          persistStateTimer = 0;
+        }
+        const current = normalizePersistedAppState(persistedAppState);
+        const nextState = normalizePersistedAppState({
+          version: LOCAL_STATE_VERSION,
+          global: collectCurrentGlobalState(),
+          boards: current.boards
+        });
+        persistedAppState = nextState;
+        try {
+          window.localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify(nextState));
+        } catch (error) {}
+      }
+
+      function schedulePersistState() {
+        if (isApplyingPersistedState) return;
+        if (persistStateTimer) clearTimeout(persistStateTimer);
+        persistStateTimer = window.setTimeout(() => {
+          persistStateTimer = 0;
+          persistStateNow();
+        }, LOCAL_STATE_SAVE_DEBOUNCE_MS);
+      }
+
+      // ------------------------------
+      // Input handling
+      // ------------------------------
+      function scheduleSolve(immediate = false) {
+        hasPendingChanges = true;
+        updateCalcControls();
+
+        if (!liveCalculationEnabled) {
+          if (isCalculating) {
+            setStatus(true, 'Calculating best layout...', 'Inputs changed. Press Calculate to restart.');
+          } else {
+            setStatus(false, 'Manual: press Calculate');
+          }
+          return;
+        }
+
+        if (isCalculating) cancelCurrentSolve('Updating inputs...');
+
+        if (solveDebounceTimer) {
+          clearTimeout(solveDebounceTimer);
+          solveDebounceTimer = null;
+        }
+
+        if (immediate) {
+          startSolve('auto');
+          return;
+        }
+
+        setStatus(false, 'Waiting for input...');
+        solveDebounceTimer = setTimeout(() => startSolve('auto'), INPUT_DEBOUNCE_MS);
+      }
+
+      function getCountsFromInputs() {
+        return PIECES.map((piece) => clampInt(inputsById[piece.id].value, 0, MAX_INPUT));
+      }
+
+      function getInstanceTiersPayload() {
+        return PIECES.map((piece) => getSortedTiersForPiece(piece.id));
+      }
+
+      function startSolve(mode = 'auto', options = null) {
+        const isManualTrigger = mode === 'manual';
+        const isVariantTrigger = mode === 'variant';
+        if (!liveCalculationEnabled && !isManualTrigger && !isVariantTrigger) {
+          return;
+        }
+
+        if (solveDebounceTimer) {
+          clearTimeout(solveDebounceTimer);
+          solveDebounceTimer = null;
+        }
+
+        if (isCalculating) cancelCurrentSolve('Recalculating...');
+
+        isCalculating = true;
+        lastProgressSnapshotSignature = '';
+        updateCalcControls();
+
+        const token = ++solveToken;
+        const fixed = options && options.fixed ? options.fixed : null;
+        const variantAttempt = options && Number.isFinite(options.variantAttempt) ? Math.max(0, Math.floor(options.variantAttempt)) : 0;
+        const inputCounts = fixed ? fixed.inputCounts.slice() : getCountsFromInputs();
+        const instanceTiers = fixed ? fixed.instanceTiers.map(arr => arr.slice()) : getInstanceTiersPayload();
+        const solverCounts = fixed ? fixed.solverCounts.slice() : getSolverCounts(inputCounts);
+        const objective = fixed && fixed.objective ? { ...fixed.objective } : getSolveObjective();
+        const baseCountsKey = fixed ? fixed.baseCountsKey : `${solverCounts.join(',')}|t:${instanceTiers.map(arr => arr.join('.')).join('-')}|o:${objectiveKey(objective)}`;
+        const variantSeed = isVariantTrigger ? ++layoutVariantNonce : 0;
+        const cacheKey = `${baseCountsKey}|v:${variantSeed}`;
+        const context = {
+          mode: isVariantTrigger ? 'variant' : 'normal',
+          variantAttempt,
+          fixed: {
+            inputCounts: inputCounts.slice(),
+            instanceTiers: instanceTiers.map(arr => arr.slice()),
+            solverCounts: solverCounts.slice(),
+            baseCountsKey,
+            objective: { ...objective }
+          }
+        };
+        solveContextByToken.set(token, context);
+
+        const cached = resultCache.get(cacheKey);
+        const bypassCacheForFreshSolve = isManualTrigger || !!(objective && objective.extendedSearch);
+        const shouldSkipTimedOutCache = isManualTrigger || !!(objective && objective.extendedSearch);
+        const canUseCached = !!cached && !bypassCacheForFreshSolve && !(shouldSkipTimedOutCache && !!cached.timedOut);
+
+        if (canUseCached) {
+          const ranked = Array.isArray(cached.topLayouts) && cached.topLayouts.length ? cached.topLayouts : [cached];
+          setRankedLayouts(ranked, inputCounts);
+          activeRankedLayoutIndex = 0;
+          const cachedPrimary = latestRankedLayouts[0] || {
+            ...cached,
+            unused: inputCounts.map((v, i) => v - (Number(cached.used && cached.used[i]) || 0))
+          };
+          const signature = boardSignature(cachedPrimary.board, cachedPrimary.boardInstance);
+          if (context.mode === 'variant' && hasSeenLayout(baseCountsKey, signature)) {
+            if (scheduleVariantRetry(context)) return;
+            solveContextByToken.delete(token);
+            return;
+          }
+          renderResult(cachedPrimary);
+          rememberLayout(baseCountsKey, signature);
+          hasPendingChanges = false;
+          isCalculating = false;
+          updateCalcControls();
+          setStatus(false, cached.timedOut ? 'Solved (cached, time-limited)' : 'Solved (cached)');
+          solveContextByToken.delete(token);
+          return;
+        }
+
+        setStatus(true, 'Calculating best layout...');
+        solveStartedAt = performance.now();
+        startProgressTicker();
+        const started = solveStartedAt;
+
+        if (!workerSupported) {
+          setStatus(true, 'Worker fallback. Calculating on main thread...');
+          solveOnMainThread(token, inputCounts, solverCounts, instanceTiers, cacheKey, started, false, variantSeed, objective);
+          return;
+        }
+
+        runSolveInWorker(token, inputCounts, solverCounts, instanceTiers, cacheKey, started, 0, variantSeed, objective);
+      }
+
+      function runSolveInWorker(token, inputCounts, solverCounts, instanceTiers, cacheKey, startedAt, retryCount, variantSeed = 0, objective = null) {
+        if (token !== solveToken) return;
+
+        try {
+          const workerRequestId = ++activeWorkerRequestId;
+          destroySolverWorker();
+          solverWorker = createSolverWorker();
+
+          solverWorker.onmessage = (event) => {
+            const payload = event.data || {};
+            if (payload.requestId !== workerRequestId || token !== solveToken) return;
+            if (payload.type === 'progress') {
+              applyBestSoFarPreview(inputCounts, payload.bestSoFar || null, payload.statesSearched || 0, payload.placementsSearched || 0);
+              updateProgressStatus(payload.statesSearched || 0, payload.placementsSearched || 0);
+              return;
+            }
+            if (payload.type === 'error') {
+              destroySolverWorker();
+              if (retryCount < WORKER_RETRY_LIMIT) {
+                setStatus(true, 'Solver worker restarted...', `retry ${retryCount + 1}`);
+                runSolveInWorker(token, inputCounts, solverCounts, instanceTiers, cacheKey, startedAt, retryCount + 1, variantSeed, objective);
+                return;
+              }
+              solveOnMainThread(token, inputCounts, solverCounts, instanceTiers, cacheKey, startedAt, true, variantSeed, objective);
+              return;
+            }
+            if (payload.type === 'result') {
+              finalizeSolve(token, inputCounts, cacheKey, startedAt, payload.result);
+            }
+          };
+
+          solverWorker.onerror = () => {
+            if (token !== solveToken) return;
+            destroySolverWorker();
+            if (retryCount < WORKER_RETRY_LIMIT) {
+              runSolveInWorker(token, inputCounts, solverCounts, instanceTiers, cacheKey, startedAt, retryCount + 1, variantSeed, objective);
+              return;
+            }
+            solveOnMainThread(token, inputCounts, solverCounts, instanceTiers, cacheKey, startedAt, true, variantSeed, objective);
+          };
+
+          solverWorker.postMessage({
+            type: 'solve',
+            requestId: workerRequestId,
+            counts: solverCounts,
+            instanceTiers: instanceTiers,
+            variantSeed,
+            objective
+          });
+        } catch (error) {
+          if (token !== solveToken) return;
+          destroySolverWorker();
+          solveOnMainThread(token, inputCounts, solverCounts, instanceTiers, cacheKey, startedAt, true, variantSeed, objective);
+        }
+      }
+
+      function solveOnMainThread(token, inputCounts, solverCounts, instanceTiers, cacheKey, startedAt, compatibilityMode = false, variantSeed = 0, objective = null) {
+        requestAnimationFrame(() => {
+          if (token !== solveToken) return;
+          try {
+            ensureMainSolverRuntime();
+            const result = solveOptimalLayout(
+              solverCounts,
+              instanceTiers,
+              (statesSearched, placementsSearched, bestSoFar) => {
+                if (token !== solveToken) return;
+                applyBestSoFarPreview(inputCounts, bestSoFar || null, statesSearched || 0, placementsSearched || 0);
+                updateProgressStatus(statesSearched || 0, placementsSearched || 0);
+              },
+              compatibilityMode
+                ? { maxStates: 1500000, maxMs: 4000, progressEvery: 25000 }
+                : { maxStates: 6000000, maxMs: 12000, progressEvery: 45000 },
+              variantSeed,
+              objective
+            );
+            finalizeSolve(token, inputCounts, cacheKey, startedAt, result);
+          } catch (error) {
+            if (token !== solveToken) return;
+            isCalculating = false;
+            hasPendingChanges = true;
+            updateCalcControls();
+            stopProgressTicker();
+            setStatus(false, 'Calculation failed. Try again.');
+          }
+        });
+      }
+
+      function finalizeSolve(token, inputCounts, cacheKey, startedAt, result) {
+        if (token !== solveToken) return;
+        const context = solveContextByToken.get(token);
+        const baseCountsKey = context && context.fixed ? context.fixed.baseCountsKey : getSolverCounts(inputCounts).join(',');
+        const rankedSource = Array.isArray(result.topLayouts) && result.topLayouts.length ? result.topLayouts : [result];
+        setRankedLayouts(rankedSource, inputCounts);
+        activeRankedLayoutIndex = 0;
+        const primaryLayout = latestRankedLayouts[0] || {
+          ...result,
+          unused: inputCounts.map((v, i) => v - (Number(result.used && result.used[i]) || 0))
+        };
+        const signature = boardSignature(primaryLayout.board, primaryLayout.boardInstance);
+        if (context && context.mode === 'variant' && hasSeenLayout(baseCountsKey, signature)) {
+          if (scheduleVariantRetry(context)) return;
+          solveContextByToken.delete(token);
+          return;
+        }
+
+        const ended = performance.now();
+        const solveMs = ended - startedAt;
+        for (const layout of latestRankedLayouts) {
+          layout.solveMs = solveMs;
+          layout.placementsSearched = Number.isFinite(result.placementsSearched) ? result.placementsSearched : layout.placementsSearched;
+          layout.statesSearched = Number.isFinite(result.statesSearched) ? result.statesSearched : layout.statesSearched;
+        }
+        const cachedLayouts = latestRankedLayouts.map((layout) => ({
+          ...layout,
+          solveMs: 0
+        }));
+        resultCache.set(cacheKey, {
+          ...primaryLayout,
+          solveMs: 0,
+          topLayouts: cachedLayouts
+        });
+        rememberLayout(baseCountsKey, signature);
+        renderResult(latestRankedLayouts[0]);
+        isCalculating = false;
+        hasPendingChanges = false;
+        lastProgressSnapshotSignature = '';
+        updateCalcControls();
+        stopProgressTicker();
+        const timedOut = !!result.timedOut;
+        const layoutCount = latestRankedLayouts.length;
+        setStatus(false, timedOut ? 'Solved (time-limited)' : 'Solved', layoutCount > 1 ? `Top ${layoutCount} layouts ready` : '');
+        destroySolverWorker();
+        solveContextByToken.delete(token);
+      }
+
+      function getLayoutSet(baseCountsKey) {
+        if (!layoutHistoryByCounts.has(baseCountsKey)) {
+          layoutHistoryByCounts.set(baseCountsKey, new Set());
+        }
+        return layoutHistoryByCounts.get(baseCountsKey);
+      }
+
+      function hasSeenLayout(baseCountsKey, signature) {
+        return getLayoutSet(baseCountsKey).has(signature);
+      }
+
+      function rememberLayout(baseCountsKey, signature) {
+        getLayoutSet(baseCountsKey).add(signature);
+      }
+
+      function scheduleVariantRetry(context) {
+        const objective = context && context.fixed && context.fixed.objective ? context.fixed.objective : null;
+        const depthScale = objective && Number.isFinite(objective.calcDepthScale) ? Math.max(1, Number(objective.calcDepthScale)) : 1;
+        const variantAttemptLimit = Math.max(1, Math.floor(VARIANT_MAX_ATTEMPTS * depthScale));
+        const nextAttempt = context.variantAttempt + 1;
+        if (nextAttempt >= variantAttemptLimit) {
+          isCalculating = false;
+          hasPendingChanges = false;
+          updateCalcControls();
+          stopProgressTicker();
+          setStatus(false, 'No more unique layouts available for this component set.');
+          return false;
+        }
+        isCalculating = false;
+        updateCalcControls();
+        stopProgressTicker();
+        setStatus(true, 'Searching alternate layout...', `attempt ${nextAttempt + 1}/${variantAttemptLimit}`);
+        solveContextByToken.delete(solveToken);
+        startSolve('variant', { fixed: context.fixed, variantAttempt: nextAttempt });
+        return true;
+      }
+
+      function getSolveObjective() {
+        const mode = getActiveAdvancedMode();
+        const calcDepth = getActiveCalcDepth();
+        const calcDepthScale = getCalcDepthScale(calcDepth);
+        const selectedMask = isComponentPriorityMode(mode) ? getSelectedPriorityMask() : 0;
+        return {
+          mode,
+          calcDepth,
+          calcDepthScale,
+          prioritizeFullBoard: true,
+          extendedSearch: !!(extendedSearchToggleEl && extendedSearchToggleEl.checked),
+          selectedMask
+        };
+      }
+
+      function objectiveKey(objective) {
+        const mode = objective && typeof objective.mode === 'string' ? objective.mode : ADVANCED_MODE.BALANCED;
+        const calcDepth = objective && typeof objective.calcDepth === 'string' ? objective.calcDepth : CALC_DEPTH.SHORT;
+        const selectedMask = objective && Number.isFinite(objective.selectedMask) ? (objective.selectedMask | 0) : 0;
+        const extendedSearch = !!(objective && objective.extendedSearch);
+        return `${mode}|d:${calcDepth}|m:${selectedMask}|x:${extendedSearch ? 1 : 0}`;
+      }
+
+      function updateRulesText() {
+        if (!rulesEl) return;
+        const mode = getActiveAdvancedMode();
+        const calcDepth = getActiveCalcDepth();
+        const selectedMask = getSelectedPriorityMask();
+        const selectedIds = getSelectedPriorityIds(selectedMask);
+        const selectedLabel = selectedIds.length ? selectedIds.join(', ') : 'none selected';
+        const depthLabel = calcDepth === CALC_DEPTH.LONG ? 'Long (3x)' : (calcDepth === CALC_DEPTH.MEDIUM ? 'Medium (1.5x)' : 'Short (1x)');
+        updateAdvancedModeWarning(mode, selectedIds, true);
+
+        if (mode === ADVANCED_MODE.PREFER_SELECTED) {
+          rulesEl.innerHTML = `Score priority: <strong>1) selected components (${selectedLabel})</strong>, <strong>2) total points based on selected tier colors</strong>, <strong>3) completed rows</strong>. Depth: <strong>${depthLabel}</strong>.`;
+        } else if (mode === ADVANCED_MODE.STRICT_SELECTED) {
+          rulesEl.innerHTML = `Score priority: <strong>1) strictly maximize selected components (${selectedLabel})</strong>, <strong>2) total points based on tier colors</strong>, <strong>3) completed rows</strong>. Depth: <strong>${depthLabel}</strong>.`;
+        } else {
+          rulesEl.innerHTML = `Score priority: <strong>1) Total points based on selected tier colors</strong>, <strong>2) completed rows</strong>, <strong>3) filled cells</strong>, then tie-break by fewer trapped holes. Compute depth: <strong>${depthLabel}</strong>.`;
+        }
+      }
+
+      function setStatus(searching, text, meta = '') {
+        spinnerEl.classList.toggle('active', searching);
+        boardEl.classList.toggle('is-solving', searching);
+        if (boardLoadingTextEl) {
+          boardLoadingTextEl.textContent = searching ? 'Calculating...' : '';
+        }
+        statusTextEl.textContent = text;
+        statusMetaEl.textContent = meta;
+      }
+
+      function cancelAutoCalculation() {
+        if (solveDebounceTimer) {
+          clearTimeout(solveDebounceTimer);
+          solveDebounceTimer = null;
+        }
+        destroySolverWorker();
+        solveToken++;
+        isCalculating = false;
+        stopProgressTicker();
+      }
+
+      function cancelCurrentSolve(statusText) {
+        cancelAutoCalculation();
+        hasPendingChanges = true;
+        lastProgressSnapshotSignature = '';
+        updateCalcControls();
+        setStatus(false, statusText || 'Calculation canceled');
+      }
+
+      function updateCalcControls() {
+        calculateBtnEl.textContent = isCalculating ? 'Recalculate' : 'Calculate';
+        calculateBtnEl.disabled = false;
+        if (stopBtnEl) {
+          stopBtnEl.disabled = !isCalculating;
+        }
+        anotherLayoutBtnEl.disabled = isCalculating;
+        resetBtnEl.disabled = isCalculating;
+      }
+
+      // Progress bar animations
+      function startProgressTicker() {
+        stopProgressTicker();
+        progressTimerId = window.setInterval(() => {
+          if (!isCalculating) {
+            stopProgressTicker();
+            return;
+          }
+          const elapsed = Math.max(0, (performance.now() - solveStartedAt) / 1000);
+          setStatus(true, 'Calculating best layout...', `elapsed ${elapsed.toFixed(1)}s`);
+        }, 300);
+      }
+
+      function stopProgressTicker() {
+        if (!progressTimerId) return;
+        clearInterval(progressTimerId);
+        progressTimerId = 0;
+      }
+
+      function updateProgressStatus(statesSearched, placementsSearched) {
+        const elapsed = Math.max(0, (performance.now() - solveStartedAt) / 1000);
+        const statesText = numberFmt(statesSearched);
+        const placementsText = numberFmt(placementsSearched);
+        setStatus(true, 'Calculating best layout...', `${statesText} states, ${placementsText} placements, ${elapsed.toFixed(1)}s`);
+      }
+
+      function ensureMainSolverRuntime() {
+        if (BIT_MASKS) return;
+
+        BIT_MASKS = Array.from({ length: CELLS }, (_, i) => 1n << BigInt(i));
+        FULL_MASK = (1n << BigInt(CELLS)) - 1n;
+        PREFIX_MASKS = Array.from({ length: CELLS + 1 }, () => 0n);
+        SUFFIX_MASKS = Array.from({ length: CELLS + 1 }, () => 0n);
+        for (let i = 1; i <= CELLS; i++) {
+          PREFIX_MASKS[i] = PREFIX_MASKS[i - 1] | BIT_MASKS[i - 1];
+        }
+        for (let i = 0; i <= CELLS; i++) {
+          SUFFIX_MASKS[i] = FULL_MASK ^ PREFIX_MASKS[i];
+        }
+
+        rotationsByPiece = PIECES.map((piece) => getUniqueRotations(piece.cells));
+        placements = [];
+        placementsByAnchor = Array.from({ length: CELLS }, () =>
+          Array.from({ length: PIECES.length }, () => [])
+        );
+        precomputePlacements();
+      }
+
+      function destroySolverWorker() {
+        if (!solverWorker) return;
+        solverWorker.terminate();
+        solverWorker = null;
+      }
+
+      function createSolverWorker() {
+        if (!solverWorkerScriptUrl) {
+          const workerSource = getSolverWorkerSource();
+          const blob = new Blob([workerSource], { type: 'text/javascript' });
+          solverWorkerScriptUrl = URL.createObjectURL(blob);
+        }
+        return new Worker(solverWorkerScriptUrl);
+      }
+
+      function getSolverWorkerSource() {
+        if (solverWorkerSourceCache) return solverWorkerSourceCache;
+
+        const workerPieces = PIECES.map((piece) => ({ id: piece.id, cells: piece.cells }));
+        const parts = [];
+
+        parts.push('(() => {');
+        parts.push('\"use strict\";');
+        parts.push(`const COLS = ${COLS};`);
+        parts.push(`const ROWS = ${ROWS};`);
+        parts.push(`const CELLS = ${CELLS};`);
+        parts.push(`const PIECE_SIZE = ${PIECE_SIZE};`);
+        parts.push(`const MAX_USABLE_PIECES = ${MAX_USABLE_PIECES};`);
+        parts.push(`const PIECES = ${JSON.stringify(workerPieces)};`);
+        parts.push('const BIT_MASKS = Array.from({ length: CELLS }, (_, i) => 1n << BigInt(i));');
+        parts.push('const FULL_MASK = (1n << BigInt(CELLS)) - 1n;');
+        parts.push('const PREFIX_MASKS = Array.from({ length: CELLS + 1 }, () => 0n);');
+        parts.push('const SUFFIX_MASKS = Array.from({ length: CELLS + 1 }, () => 0n);');
+        parts.push('for (let i = 1; i <= CELLS; i++) { PREFIX_MASKS[i] = PREFIX_MASKS[i - 1] | BIT_MASKS[i - 1]; }');
+        parts.push('for (let i = 0; i <= CELLS; i++) { SUFFIX_MASKS[i] = FULL_MASK ^ PREFIX_MASKS[i]; }');
+        parts.push('const rotationsByPiece = PIECES.map((piece) => getUniqueRotations(piece.cells));');
+        parts.push('const placements = [];');
+        parts.push('const placementsByAnchor = Array.from({ length: CELLS }, () => Array.from({ length: PIECES.length }, () => []));');
+        parts.push('let initialized = false;');
+        parts.push(normalizeCells.toString());
+        parts.push(getUniqueRotations.toString());
+        parts.push(precomputePlacements.toString());
+        parts.push(canStillBeatBest.toString());
+        parts.push(getOptimisticBounds.toString());
+        parts.push(countHoles.toString());
+        parts.push(boardSignature.toString());
+        parts.push(boardVariantScore.toString());
+        parts.push(popcount32.toString());
+        parts.push(popcount56.toString());
+        parts.push(solveOptimalLayout.toString());
+        parts.push('function ensureInitialized() { if (initialized) return; precomputePlacements(); initialized = true; }');
+        parts.push(`self.onmessage = (event) => {
+          const data = event.data || {};
+          if (data.type !== 'solve') return;
+          try {
+            ensureInitialized();
+            const rawCounts = Array.isArray(data.counts) ? data.counts : [];
+            const instanceTiers = Array.isArray(data.instanceTiers) ? data.instanceTiers : [[3],[7],[2],[1],[4]];
+            const counts = new Array(PIECES.length).fill(0);
+            const variantSeed = Number.isFinite(Number(data.variantSeed)) ? Number(data.variantSeed) : 0;
+            const mode = (data.objective && typeof data.objective.mode === 'string') ? data.objective.mode : 'balanced';
+            const calcDepth = (data.objective && typeof data.objective.calcDepth === 'string') ? data.objective.calcDepth : 'short';
+            const calcDepthScaleRaw = Number(data.objective && data.objective.calcDepthScale);
+            const selectedMaskRaw = Number(data.objective && data.objective.selectedMask);
+            const objective = {
+              mode,
+              calcDepth,
+              calcDepthScale: Number.isFinite(calcDepthScaleRaw) && calcDepthScaleRaw > 0 ? calcDepthScaleRaw : 1,
+              prioritizeFullBoard: true,
+              extendedSearch: !!(data.objective && data.objective.extendedSearch),
+              selectedMask: Number.isFinite(selectedMaskRaw) ? (selectedMaskRaw | 0) : 0
+            };
+            for (let i = 0; i < PIECES.length; i++) {
+              const value = Number(rawCounts[i] || 0);
+              const safe = Number.isFinite(value) ? Math.floor(value) : 0;
+              counts[i] = Math.max(0, Math.min(MAX_USABLE_PIECES, safe));
+            }
+            const result = solveOptimalLayout(counts, instanceTiers, (statesSearched, placementsSearched, bestSoFar) => {
+              self.postMessage({
+                type: 'progress',
+                requestId: data.requestId,
+                statesSearched,
+                placementsSearched,
+                bestSoFar: bestSoFar
+                  ? {
+                      ...bestSoFar,
+                      board: Array.from(bestSoFar.board),
+                      boardInstance: Array.from(bestSoFar.boardInstance),
+                      used: Array.from(bestSoFar.used)
+                    }
+                  : null
+              });
+            }, null, variantSeed, objective);
+            self.postMessage({
+              type: 'result',
+              requestId: data.requestId,
+              result: {
+                ...result,
+                board: Array.from(result.board),
+                boardInstance: Array.from(result.boardInstance),
+                used: Array.from(result.used),
+                topLayouts: Array.isArray(result.topLayouts)
+                  ? result.topLayouts.map((layout) => ({
+                      ...layout,
+                      board: Array.from(layout.board),
+                      boardInstance: Array.from(layout.boardInstance),
+                      used: Array.from(layout.used)
+                    }))
+                  : []
+              }
+            });
+          } catch (err) {
+            self.postMessage({
+              type: 'error',
+              requestId: data.requestId,
+              message: err && err.message ? err.message : 'Worker solve failed'
+            });
+          }
+        };`);
+        parts.push('})();');
+
+        solverWorkerSourceCache = parts.join('\n');
+        return solverWorkerSourceCache;
+      }
+
+      // ------------------------------
+      // Solver Engine with Point-Based Backtracking Pruning
+      // ------------------------------
+      function solveOptimalLayout(initialCounts, instanceTiers, progressCallback = null, limits = null, variantSeed = 0, objective = null) {
+        const MODE_BALANCED = 'balanced';
+        const MODE_PREFER_SELECTED = 'preferSelected';
+        const MODE_STRICT_SELECTED = 'strictSelected';
+        const TOP_LAYOUT_LIMIT = 4;
+        const rawMode = objective && typeof objective.mode === 'string' ? objective.mode : MODE_BALANCED;
+        const mode = [MODE_BALANCED, MODE_PREFER_SELECTED, MODE_STRICT_SELECTED].includes(rawMode) ? rawMode : MODE_BALANCED;
+        const calcDepthScale = objective && Number.isFinite(objective.calcDepthScale) && objective.calcDepthScale > 0
+          ? Number(objective.calcDepthScale)
+          : 1;
+        const prioritizeFullBoard = true;
+        const extendedSearch = !!(objective && objective.extendedSearch);
+        const selectedMask = objective && Number.isFinite(objective.selectedMask) ? (objective.selectedMask | 0) : 0;
+        const useComponentPreference = (mode === MODE_PREFER_SELECTED || mode === MODE_STRICT_SELECTED) && selectedMask !== 0;
+
+        // Scale searching complexity based on layout depth option
+        const MAX_SEARCH_STATES_LOCAL = limits && Number.isFinite(limits.maxStates)
+          ? Math.max(10000, Math.floor(Number(limits.maxStates) * calcDepthScale))
+          : Math.max(10000, Math.floor((prioritizeFullBoard ? 15000000 : 7000000) * calcDepthScale));
+
+        const MAX_SOLVE_MS_LOCAL = limits && Number.isFinite(limits.maxMs)
+          ? Math.max(100, Math.floor(Number(limits.maxMs) * calcDepthScale))
+          : Math.max(100, Math.floor((prioritizeFullBoard ? 18000 : 10000) * calcDepthScale));
+
+        const PROGRESS_EVERY = limits && Number.isFinite(limits.progressEvery) ? Math.max(1000, Math.floor(limits.progressEvery)) : 45000;
+        const CHECK_INTERVAL_MASK = 4095;
+        let startedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+
+        const counts = initialCounts.slice();
+        const used = new Uint8Array(PIECES.length);
+        const rowFill = new Uint8Array(ROWS);
+        const boardType = new Int8Array(CELLS);
+        const boardInstance = new Int32Array(CELLS);
+        boardType.fill(-1);
+        boardInstance.fill(-1);
+
+        const seenStates = new Set();
+
+        let remainingPieces = counts.reduce((sum, v) => sum + v, 0);
+        let statesSearched = 0;
+        let placementsSearched = 0;
+        let foundPerfect = false;
+        let timedOut = false;
+        let lastProgressReport = 0;
+
+        const best = {
+          points: -1,
+          lines: -1,
+          filled: -1,
+          selectedUsed: -1,
+          holes: Number.POSITIVE_INFINITY,
+          bottomCompact: Number.NEGATIVE_INFINITY,
+          tieScore: Number.NEGATIVE_INFINITY,
+          signature: '~',
+          board: new Int8Array(CELLS).fill(-1),
+          boardInstance: new Int32Array(CELLS).fill(-1),
+          used: new Array(PIECES.length).fill(0)
+        };
+        const topLayouts = [];
+        const topLayoutSignatures = new Set();
+
+        function compareScoredLayouts(candidate, bestRef) {
+          const primaryCmp = comparePrimaryScore(candidate.lines, candidate.filled, candidate.points, candidate.selectedUsed, bestRef);
+          if (primaryCmp !== 0) return primaryCmp;
+          if (candidate.holes !== bestRef.holes) {
+            return candidate.holes < bestRef.holes ? 1 : -1;
+          }
+          if (candidate.bottomCompact !== bestRef.bottomCompact) {
+            return candidate.bottomCompact > bestRef.bottomCompact ? 1 : -1;
+          }
+          if (candidate.tieScore !== bestRef.tieScore) {
+            return candidate.tieScore > bestRef.tieScore ? 1 : -1;
+          }
+          if (candidate.signature !== bestRef.signature) {
+            return candidate.signature < bestRef.signature ? 1 : -1;
+          }
+          return 0;
+        }
+
+        function recordTopLayout(candidate) {
+          if (topLayoutSignatures.has(candidate.signature)) return;
+          let insertAt = topLayouts.length;
+          for (let i = 0; i < topLayouts.length; i++) {
+            if (compareScoredLayouts(candidate, topLayouts[i]) > 0) {
+              insertAt = i;
+              break;
+            }
+          }
+          if (insertAt >= TOP_LAYOUT_LIMIT) return;
+
+          topLayouts.splice(insertAt, 0, candidate);
+          topLayoutSignatures.add(candidate.signature);
+          if (topLayouts.length > TOP_LAYOUT_LIMIT) {
+            const removed = topLayouts.pop();
+            if (removed) topLayoutSignatures.delete(removed.signature);
+          }
+        }
+
+        function comparePrimaryScore(lines, filled, points, selectedUsed, bestRef) {
+          // Priority Hierarchy: 
+          // 1. Strict Priority selection (if active)
+          // 2. Maximum Total Points (sum of tiers)
+          // 3. Completed Lines (rows complete)
+          // 4. Maximum Filled Cells
+          if (useComponentPreference && mode === MODE_STRICT_SELECTED) {
+            if (selectedUsed !== bestRef.selectedUsed) return selectedUsed > bestRef.selectedUsed ? 1 : -1;
+          }
+
+          if (points !== bestRef.points) return points > bestRef.points ? 1 : -1;
+
+          if (useComponentPreference && mode === MODE_PREFER_SELECTED) {
+            if (selectedUsed !== bestRef.selectedUsed) return selectedUsed > bestRef.selectedUsed ? 1 : -1;
+          }
+
+          if (lines !== bestRef.lines) return lines > bestRef.lines ? 1 : -1;
+          if (filled !== bestRef.filled) return filled > bestRef.filled ? 1 : -1;
+          return 0;
+        }
+
+        function dfs(index, occMask, rowDeadMask, filled, linesComplete, bottomCompact, selectedUsed, currentPoints) {
+          if (foundPerfect || timedOut) return;
+
+          while (index < CELLS && (occMask & BIT_MASKS[index])) {
+            index++;
+          }
+
+          statesSearched++;
+          if ((statesSearched & CHECK_INTERVAL_MASK) === 0) {
+            const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            if (statesSearched >= MAX_SEARCH_STATES_LOCAL || (now - startedAt) >= MAX_SOLVE_MS_LOCAL) {
+              timedOut = true;
+              return;
+            }
+          }
+
+          if (progressCallback && statesSearched - lastProgressReport >= PROGRESS_EVERY) {
+            lastProgressReport = statesSearched;
+            progressCallback(statesSearched, placementsSearched, topLayouts.length ? topLayouts[0] : null);
+          }
+
+          let selectedRemaining = 0;
+          if (useComponentPreference) {
+            for (let t = 0; t < PIECES.length; t++) {
+              if ((selectedMask & (1 << t)) !== 0) {
+                selectedRemaining += counts[t];
+              }
+            }
+          }
+
+          // Use point-optimized lookahead bound logic
+          const bounds = getOptimisticBounds(index, occMask, rowDeadMask, filled, linesComplete, rowFill, remainingPieces, currentPoints, instanceTiers, used, remainingPieces);
+          const pruneTarget = (extendedSearch && topLayouts.length >= TOP_LAYOUT_LIMIT)
+            ? topLayouts[topLayouts.length - 1]
+            : (!extendedSearch ? best : null);
+
+          if (pruneTarget && !canStillBeatBest(bounds.upperLines, bounds.upperFilled, bounds.upperPoints, selectedUsed + selectedRemaining, pruneTarget, {
+            mode,
+            selectedMask
+          })) {
+            return;
+          }
+
+          if (!extendedSearch) {
+            const key = `${index}|${rowDeadMask}|${counts.join(',')}|${occMask.toString(36)}`;
+            if (seenStates.has(key)) return;
+            seenStates.add(key);
+          }
+
+          if (index >= CELLS || remainingPieces === 0) {
+            evaluateCandidate(occMask, linesComplete, filled, bottomCompact, selectedUsed, currentPoints);
+            return;
+          }
+
+          const moves = [];
+
+          // Try and position components
+          for (let t = 0; t < PIECES.length; t++) {
+            if (counts[t] <= 0) continue;
+
+            const anchorPlacements = placementsByAnchor[index][t];
+            for (let i = 0; i < anchorPlacements.length; i++) {
+              const p = anchorPlacements[i];
+              if ((p.mask & occMask) !== 0n) continue;
+
+              placementsSearched++;
+
+              let lineGain = 0;
+              let nearFill = 0;
+              let touchesDeadRows = 0;
+
+              for (let j = 0; j < p.rowAdds.length; j++) {
+                const row = p.rowAdds[j][0];
+                const add = p.rowAdds[j][1];
+                const next = rowFill[row] + add;
+                nearFill += next;
+                if (next === COLS) lineGain++;
+                if ((rowDeadMask & (1 << row)) !== 0) touchesDeadRows++;
+              }
+
+              // Take points of the current sequential instance being placed (sorted descending)
+              const pointsValue = instanceTiers[t][used[t]] || 1;
+
+              moves.push({
+                pieceType: t,
+                placement: p,
+                lineGain,
+                nearFill,
+                touchesDeadRows,
+                scarcity: counts[t],
+                pointsValue: pointsValue,
+                selectedWeight: (selectedMask & (1 << t)) !== 0 ? 1 : 0
+              });
+            }
+          }
+
+          // Backtracking prioritization: Prefer placing high-tier (pointsValue) pieces first!
+          if (moves.length > 1) {
+            moves.sort((a, b) => {
+              if (useComponentPreference && mode === MODE_STRICT_SELECTED && b.selectedWeight !== a.selectedWeight) {
+                return b.selectedWeight - a.selectedWeight;
+              }
+              if (b.pointsValue !== a.pointsValue) return b.pointsValue - a.pointsValue; // Individual Tier colors priority!
+              if (b.lineGain !== a.lineGain) return b.lineGain - a.lineGain;
+              if (a.touchesDeadRows !== b.touchesDeadRows) return a.touchesDeadRows - b.touchesDeadRows;
+              if (b.nearFill !== a.nearFill) return b.nearFill - a.nearFill;
+              if (b.placement.bottomSum !== a.placement.bottomSum) return b.placement.bottomSum - a.placement.bottomSum;
+              if (a.scarcity !== b.scarcity) return a.scarcity - b.scarcity;
+              return a.placement.id - b.placement.id;
+            });
+          }
+
+          for (let m = 0; m < moves.length; m++) {
+            const { pieceType, placement, pointsValue } = moves[m];
+
+            counts[pieceType]--;
+            used[pieceType]++;
+            remainingPieces--;
+
+            let gainedLines = 0;
+            for (let j = 0; j < placement.rowAdds.length; j++) {
+              const row = placement.rowAdds[j][0];
+              const add = placement.rowAdds[j][1];
+              const prev = rowFill[row];
+              const next = prev + add;
+              rowFill[row] = next;
+              if (prev < COLS && next === COLS) gainedLines++;
+            }
+
+            for (let c = 0; c < placement.cells.length; c++) {
+              boardType[placement.cells[c]] = pieceType;
+              boardInstance[placement.cells[c]] = placement.id;
+            }
+
+            dfs(
+              index + 1,
+              occMask | placement.mask,
+              rowDeadMask,
+              filled + PIECE_SIZE,
+              linesComplete + gainedLines,
+              bottomCompact + placement.bottomSum,
+              selectedUsed + moves[m].selectedWeight,
+              currentPoints + pointsValue
+            );
+
+            for (let c = 0; c < placement.cells.length; c++) {
+              boardType[placement.cells[c]] = -1;
+              boardInstance[placement.cells[c]] = -1;
+            }
+
+            for (let j = 0; j < placement.rowAdds.length; j++) {
+              const row = placement.rowAdds[j][0];
+              const add = placement.rowAdds[j][1];
+              rowFill[row] -= add;
+            }
+
+            counts[pieceType]++;
+            used[pieceType]--;
+            remainingPieces++;
+          }
+
+          const row = Math.floor(index / COLS);
+          const nextDeadMask = rowFill[row] < COLS ? (rowDeadMask | (1 << row)) : rowDeadMask;
+          dfs(index + 1, occMask, nextDeadMask, filled, linesComplete, bottomCompact, selectedUsed, currentPoints);
+        }
+
+        function evaluateCandidate(occMask, lines, filled, bottomCompact, selectedUsed, points) {
+          const primaryCmp = comparePrimaryScore(lines, filled, points, selectedUsed, best);
+          const holes = countHoles(occMask);
+          const tieScore = boardVariantScore(boardType, variantSeed);
+          const signature = boardSignature(boardType, boardInstance);
+          const candidateSnapshot = {
+            lines,
+            filled,
+            points,
+            empty: CELLS - filled,
+            holes,
+            selectedUsed,
+            bottomCompact,
+            tieScore,
+            signature,
+            board: Int8Array.from(boardType),
+            boardInstance: Int32Array.from(boardInstance),
+            used: Array.from(used)
+          };
+          recordTopLayout(candidateSnapshot);
+          if (primaryCmp < 0) return;
+
+          if (primaryCmp === 0) {
+            if (holes > best.holes || (holes === best.holes && bottomCompact < best.bottomCompact)) return;
+            if (holes === best.holes && bottomCompact === best.bottomCompact) {
+              if (tieScore < best.tieScore) return;
+              if (tieScore === best.tieScore && signature >= best.signature) return;
+            }
+          }
+
+          best.lines = lines;
+          best.filled = filled;
+          best.points = points;
+          best.selectedUsed = selectedUsed;
+          best.holes = holes;
+          best.bottomCompact = bottomCompact;
+          best.tieScore = tieScore;
+          best.signature = signature;
+          best.board = candidateSnapshot.board;
+          best.boardInstance = candidateSnapshot.boardInstance;
+          best.used = candidateSnapshot.used;
+
+          if (!extendedSearch && !useComponentPreference && lines === ROWS && filled === CELLS) {
+            foundPerfect = true;
+          }
+        }
+
+        dfs(0, 0n, 0, 0, 0, 0, 0, 0);
+
+        if (best.points < 0) {
+          best.lines = 0;
+          best.filled = 0;
+          best.points = 0;
+          best.selectedUsed = 0;
+          best.holes = 0;
+          best.bottomCompact = 0;
+          best.tieScore = 0;
+          best.signature = boardSignature(best.board, best.boardInstance);
+        }
+
+        if (!topLayouts.length) {
+          recordTopLayout({
+            lines: best.lines,
+            filled: best.filled,
+            points: best.points,
+            empty: CELLS - best.filled,
+            holes: best.holes,
+            selectedUsed: best.selectedUsed,
+            bottomCompact: best.bottomCompact,
+            tieScore: best.tieScore,
+            signature: best.signature,
+            board: Int8Array.from(best.board),
+            boardInstance: Int32Array.from(best.boardInstance),
+            used: Array.from(best.used)
+          });
+        }
+
+        return {
+          lines: best.lines,
+          filled: best.filled,
+          points: best.points,
+          empty: CELLS - best.filled,
+          holes: best.holes,
+          selectedUsed: best.selectedUsed,
+          bottomCompact: best.bottomCompact,
+          tieScore: best.tieScore,
+          signature: best.signature,
+          timedOut: timedOut,
+          board: best.board,
+          boardInstance: best.boardInstance,
+          used: best.used,
+          placementsSearched,
+          statesSearched,
+          solveMs: 0,
+          topLayouts
+        };
+      }
+
+      // ------------------------------
+      // Rendering and UI Methods
+      // ------------------------------
+      function compareResultForRanking(a, b) {
+        const mode = getActiveAdvancedMode();
+        const selectedMask = getSelectedPriorityMask();
+        const useComponentPreference = isComponentPriorityMode(mode) && selectedMask !== 0;
+
+        if (useComponentPreference && mode === ADVANCED_MODE.STRICT_SELECTED) {
+          if (a.selectedUsed !== b.selectedUsed) return b.selectedUsed - a.selectedUsed;
+        }
+
+        if (a.points !== b.points) return b.points - a.points; // Maximize points is primary
+
+        if (useComponentPreference && mode === ADVANCED_MODE.PREFER_SELECTED) {
+          if (a.selectedUsed !== b.selectedUsed) return b.selectedUsed - a.selectedUsed;
+        }
+
+        if (a.lines !== b.lines) return b.lines - a.lines;
+        if (a.filled !== b.filled) return b.filled - a.filled;
+        if (a.holes !== b.holes) return a.holes - b.holes;
+        if (a.bottomCompact !== b.bottomCompact) return b.bottomCompact - a.bottomCompact;
+        if (a.tieScore !== b.tieScore) return b.tieScore - a.tieScore;
+        return String(a.signature || '').localeCompare(String(b.signature || ''));
+      }
+
+      function setRankedLayouts(layouts, inputCounts) {
+        const source = Array.isArray(layouts) ? layouts : [];
+        const deduped = [];
+        const seen = new Set();
+        for (const rawLayout of source) {
+          if (!rawLayout || !Array.isArray(rawLayout.board)) continue;
+          const signature = rawLayout.signature || boardSignature(rawLayout.board, rawLayout.boardInstance);
+          if (seen.has(signature)) continue;
+          seen.add(signature);
+          const usedArr = Array.from(rawLayout.used || []);
+          const normalized = {
+            ...rawLayout,
+            signature,
+            points: Number.isFinite(rawLayout.points) ? rawLayout.points : 0,
+            lines: Number.isFinite(rawLayout.lines) ? rawLayout.lines : 0,
+            filled: Number.isFinite(rawLayout.filled) ? rawLayout.filled : 0,
+            empty: Number.isFinite(rawLayout.empty) ? rawLayout.empty : Math.max(0, CELLS - (Number(rawLayout.filled) || 0)),
+            holes: Number.isFinite(rawLayout.holes) ? rawLayout.holes : 0,
+            selectedUsed: Number.isFinite(rawLayout.selectedUsed) ? rawLayout.selectedUsed : 0,
+            bottomCompact: Number.isFinite(rawLayout.bottomCompact) ? rawLayout.bottomCompact : 0,
+            tieScore: Number.isFinite(rawLayout.tieScore) ? rawLayout.tieScore : 0,
+            placementsSearched: Number.isFinite(rawLayout.placementsSearched) ? rawLayout.placementsSearched : 0,
+            statesSearched: Number.isFinite(rawLayout.statesSearched) ? rawLayout.statesSearched : 0,
+            board: Array.from(rawLayout.board),
+            boardInstance: Array.from(rawLayout.boardInstance || []),
+            used: usedArr,
+            unused: inputCounts.map((count, idx) => count - (Number(usedArr[idx]) || 0)),
+            solveMs: Number.isFinite(rawLayout.solveMs) ? rawLayout.solveMs : 0
+          };
+          deduped.push(normalized);
+        }
+        deduped.sort(compareResultForRanking);
+        latestRankedLayouts = deduped.slice(0, MAX_RANKED_LAYOUTS);
+        if (activeRankedLayoutIndex >= latestRankedLayouts.length) {
+          activeRankedLayoutIndex = 0;
+        }
+        renderLayoutOptions();
+      }
+
+      function renderLayoutOptions() {
+        if (!layoutOptionsEl) return;
+        const useSmallestWindowText = window.innerWidth <= 460;
+        layoutOptionsEl.innerHTML = '';
+        const count = latestRankedLayouts.length;
+        layoutOptionsEl.hidden = count === 0;
+        if (count === 0) return;
+        const labels = ['A', 'B', 'C', 'D'];
+        for (let i = 0; i < labels.length; i++) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'layout-option-btn';
+          const layout = latestRankedLayouts[i];
+          const hasLayout = !!layout;
+          if (hasLayout && i === activeRankedLayoutIndex) {
+            btn.classList.add('active');
+          }
+          if (hasLayout) {
+            const detailText = `${layout.points} Pts · ${layout.lines} ${useSmallestWindowText ? 'L' : 'Rows'}`;
+            btn.innerHTML = `<span class="layout-option-letter">${labels[i]}</span><span class="layout-option-sep">·</span><span class="layout-option-detail">${detailText}</span>`;
+          } else {
+            btn.innerHTML = `<span class="layout-option-letter">${labels[i]}</span><span class="layout-option-sep">·</span><span class="layout-option-detail">n/a</span>`;
+          }
+          btn.disabled = !hasLayout;
+          btn.addEventListener('click', () => {
+            if (isCalculating || !hasLayout) return;
+            activeRankedLayoutIndex = i;
+            renderLayoutOptions();
+            renderResult(latestRankedLayouts[i]);
+            setStatus(false, `Showing Layout ${labels[i]} of ${count}`);
+          });
+          layoutOptionsEl.appendChild(btn);
+        }
+      }
+
+      function applyBestSoFarPreview(inputCounts, bestSoFar, statesSearched, placementsSearched) {
+        if (!bestSoFar || !Array.isArray(bestSoFar.board) || !Array.isArray(bestSoFar.used)) return;
+        const signature = bestSoFar.signature || boardSignature(bestSoFar.board, bestSoFar.boardInstance);
+        if (signature === lastProgressSnapshotSignature) return;
+        lastProgressSnapshotSignature = signature;
+        const preview = {
+          ...bestSoFar,
+          signature,
+          empty: Number.isFinite(bestSoFar.empty) ? bestSoFar.empty : Math.max(0, CELLS - (Number(bestSoFar.filled) || 0)),
+          placementsSearched,
+          statesSearched,
+          solveMs: Math.max(0, performance.now() - solveStartedAt),
+          unused: inputCounts.map((count, idx) => count - (Number(bestSoFar.used[idx]) || 0))
+        };
+        renderResult(preview);
+      }
+
+      function renderResult(result) {
+        const completeRows = getCompleteRows(result.board);
+
+        // Sequence order mapper to determine which exact placed piece got which points/color instance
+        const placementOrder = new Map();
+        const typeCounts = new Array(5).fill(0);
+        for (let i = 0; i < CELLS; i++) {
+          const instId = result.boardInstance[i];
+          const t = result.board[i];
+          if (t >= 0 && instId >= 0 && !placementOrder.has(instId)) {
+            placementOrder.set(instId, typeCounts[t]++);
+          }
+        }
+
+        for (let i = 0; i < CELLS; i++) {
+          const cellEl = boardCells[i];
+          const t = result.board[i];
+          const instId = result.boardInstance[i];
+          const row = Math.floor(i / COLS);
+          const complete = completeRows.has(row);
+
+          cellEl.classList.toggle('filled', t >= 0);
+          cellEl.classList.toggle('complete-row', complete);
+          
+          if (t >= 0) {
+            const seqIdx = placementOrder.get(instId);
+            const sortedTiers = getSortedTiersForPiece(PIECES[t].id);
+            const tierVal = sortedTiers[seqIdx] || 1;
+            const tierInfo = COLOR_TIERS.find(ct => ct.value === tierVal) || COLOR_TIERS[0];
+            
+            cellEl.style.backgroundColor = tierInfo.color;
+            cellEl.classList.toggle('has-diamonds', tierInfo.hasDiamonds);
+            cellEl.title = `${PIECES[t].name} (Instance #${(seqIdx || 0) + 1}, Tier ${tierVal})`;
+          } else {
+            cellEl.style.backgroundColor = getCssVar('--board-cell-empty');
+            cellEl.classList.remove('has-diamonds');
+            cellEl.title = 'Empty';
+          }
+        }
+
+        updateRowHighlights(completeRows);
+        drawPieceOutlines(result.board, result.boardInstance);
+        lastRenderedResult = result;
+
+        statEls.points.textContent = String(result.points);
+        statEls.lines.textContent = String(result.lines);
+        statEls.filled.textContent = String(result.filled);
+        statEls.empty.textContent = String(result.empty);
+        statEls.placements.textContent = numberFmt(result.placementsSearched);
+        statEls.states.textContent = numberFmt(result.statesSearched);
+        statEls.solveMs.textContent = result.solveMs.toFixed(2);
+
+        for (let i = 0; i < PIECES.length; i++) {
+          const piece = PIECES[i];
+          const card = usageCardsById[piece.id];
+          card.querySelector('.used-val').textContent = String(result.used[i]);
+          card.querySelector('.unused-val').textContent = String(result.unused[i]);
+        }
+      }
+
+      function createBoardCells() {
+        rowHighlightLayer = document.createElement('div');
+        rowHighlightLayer.className = 'row-highlight-layer';
+        for (let r = 0; r < ROWS; r++) {
+          const rowEl = document.createElement('div');
+          rowEl.className = 'row-highlight';
+          rowHighlightEls.push(rowEl);
+          rowHighlightLayer.appendChild(rowEl);
+        }
+        boardEl.appendChild(rowHighlightLayer);
+
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < CELLS; i++) {
+          const div = document.createElement('div');
+          div.className = 'board-cell';
+          boardCells.push(div);
+          frag.appendChild(div);
+        }
+        boardEl.appendChild(frag);
+
+        pieceOutlineLayer = document.createElementNS(SVG_NS, 'svg');
+        pieceOutlineLayer.classList.add('piece-outline-layer');
+        pieceOutlineLayer.setAttribute('aria-hidden', 'true');
+        boardEl.appendChild(pieceOutlineLayer);
+
+        const solvingOverlay = document.createElement('div');
+        solvingOverlay.className = 'board-solving-overlay';
+        solvingOverlay.setAttribute('aria-hidden', 'true');
+
+        const solvingSpinner = document.createElement('span');
+        solvingSpinner.className = 'board-solving-spinner';
+        solvingOverlay.appendChild(solvingSpinner);
+
+        boardLoadingTextEl = document.createElement('span');
+        boardLoadingTextEl.className = 'board-solving-text';
+        boardLoadingTextEl.textContent = '';
+        solvingOverlay.appendChild(boardLoadingTextEl);
+
+        boardEl.appendChild(solvingOverlay);
+      }
+
+      function createInventoryControls() {
+        for (const piece of PIECES) {
+          const card = document.createElement('div');
+          card.className = 'piece-card';
+
+          const shapeWrap = document.createElement('div');
+          shapeWrap.className = 'piece-shape-wrap is-rotatable';
+          shapeWrap.setAttribute('role', 'button');
+          shapeWrap.setAttribute('tabindex', '0');
+          pieceRotationById[piece.id] = 0;
+          
+          renderPieceShape(shapeWrap, piece.cells, piece.color, 0, piece.id);
+          shapeWrap.addEventListener('click', () => {
+            const nextTurns = (((Number(pieceRotationById[piece.id]) || 0) + 1) % 4 + 4) % 4;
+            pieceRotationById[piece.id] = nextTurns;
+            setPieceShapeRotation(shapeWrap, nextTurns, true);
+            shapeWrap.title = `${piece.name} preview. Rotation ${nextTurns * 90}°. Click to rotate 90°.`;
+            shapeWrap.setAttribute('aria-label', `${piece.name} preview rotated ${nextTurns * 90} degrees. Activate to rotate 90 degrees.`);
+            schedulePersistState();
+          });
+          shapeWrap.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              shapeWrap.click();
+            }
+          });
+          inventoryShapeWrapById[piece.id] = shapeWrap;
+
+          const inputWrap = document.createElement('div');
+          inputWrap.className = 'piece-input';
+
+          const label = document.createElement('label');
+          label.setAttribute('for', `qty-${piece.id}`);
+          label.textContent = 'Quantity';
+
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.min = '0';
+          input.max = String(MAX_INPUT);
+          input.step = '1';
+          input.id = `qty-${piece.id}`;
+          input.value = String(DEFAULT_COUNTS[piece.id]);
+
+          // Dynamically updated rows for instance tier configs
+          const instancesContainer = document.createElement('div');
+          instancesContainer.className = 'piece-instances-container';
+          instancesContainer.id = `instances-${piece.id}`;
+
+          input.addEventListener('input', () => {
+            updatePieceInstancesUi(piece.id);
+            syncTiersAndStyles();
+            schedulePersistState();
+            scheduleSolve(false);
+          });
+          input.addEventListener('blur', () => {
+            normalizeInputValue(input);
+            updatePieceInstancesUi(piece.id);
+            syncTiersAndStyles();
+            schedulePersistState();
+          });
+          input.addEventListener('change', () => {
+            normalizeInputValue(input);
+            updatePieceInstancesUi(piece.id);
+            syncTiersAndStyles();
+            schedulePersistState();
+            scheduleSolve(false);
+          });
+
+          const stepper = document.createElement('div');
+          stepper.className = 'piece-stepper';
+
+          const decBtn = document.createElement('button');
+          decBtn.type = 'button';
+          decBtn.className = 'step-btn';
+          decBtn.setAttribute('aria-label', `Decrease ${piece.id}`);
+          decBtn.textContent = '-';
+          decBtn.addEventListener('click', () => {
+            normalizeInputValue(input);
+            input.value = String(clampInt(Number(input.value) - 1, 0, MAX_INPUT));
+            updatePieceInstancesUi(piece.id);
+            syncTiersAndStyles();
+            schedulePersistState();
+            scheduleSolve(false);
+          });
+
+          const incBtn = document.createElement('button');
+          incBtn.type = 'button';
+          incBtn.className = 'step-btn';
+          incBtn.setAttribute('aria-label', `Increase ${piece.id}`);
+          incBtn.textContent = '+';
+          incBtn.addEventListener('click', () => {
+            normalizeInputValue(input);
+            input.value = String(clampInt(Number(input.value) + 1, 0, MAX_INPUT));
+            updatePieceInstancesUi(piece.id);
+            syncTiersAndStyles();
+            schedulePersistState();
+            scheduleSolve(false);
+          });
+
+          stepper.append(decBtn, input, incBtn);
+          inputsById[piece.id] = input;
+
+          inputWrap.append(label, stepper, instancesContainer);
+          card.append(shapeWrap, inputWrap);
+          inventoryGridEl.appendChild(card);
+        }
+      }
+
+      function createUsageCards() {
+        for (const piece of PIECES) {
+          const card = document.createElement('div');
+          card.className = 'usage-card';
+          card.innerHTML = `
+            <div class="usage-top">
+              <span class="usage-piece-icon" aria-label="${piece.name}"></span>
+            </div>
+            <div class="usage-lines">
+              used: <span class="used-val">0</span><br>
+              unused: <span class="unused-val">0</span>
+            </div>
+          `;
+          const usageIconEl = card.querySelector('.usage-piece-icon');
+          if (usageIconEl) renderPieceShape(usageIconEl, piece.cells, piece.color, 0, piece.id);
+          usageGridEl.appendChild(card);
+          usageCardsById[piece.id] = card;
+        }
+      }
+
+      // ------------------------------
+      // Precomputations & Matrices
+      // ------------------------------
+      function precomputePlacements() {
+        let idCounter = 0;
+
+        for (let t = 0; t < PIECES.length; t++) {
+          const rotations = rotationsByPiece[t];
+
+          for (const rot of rotations) {
+            for (let y = 0; y <= ROWS - rot.height; y++) {
+              for (let x = 0; x <= COLS - rot.width; x++) {
+                let mask = 0n;
+                let minIndex = Number.POSITIVE_INFINITY;
+                let bottomSum = 0;
+                const cells = [];
+                const rowMap = new Map();
+
+                for (let i = 0; i < rot.cells.length; i++) {
+                  const cx = rot.cells[i][0] + x;
+                  const cy = rot.cells[i][1] + y;
+                  const idx = cy * COLS + cx;
+
+                  cells.push(idx);
+                  minIndex = Math.min(minIndex, idx);
+                  bottomSum += cy;
+                  mask |= BIT_MASKS[idx];
+                  rowMap.set(cy, (rowMap.get(cy) || 0) + 1);
+                }
+
+                cells.sort((a, b) => a - b);
+                const rowAdds = Array.from(rowMap.entries()).sort((a, b) => a[0] - b[0]);
+
+                const placement = {
+                  id: idCounter++,
+                  type: t,
+                  mask,
+                  cells,
+                  minIndex,
+                  bottomSum,
+                  rowAdds
+                };
+
+                placements.push(placement);
+                placementsByAnchor[minIndex][t].push(placement);
+              }
+            }
+          }
+        }
+
+        for (let i = 0; i < CELLS; i++) {
+          for (let t = 0; t < PIECES.length; t++) {
+            placementsByAnchor[i][t].sort((a, b) => a.id - b.id);
+          }
+        }
+      }
+
+      function getUniqueRotations(baseCells) {
+        const unique = new Map();
+        let current = baseCells.map(([x, y]) => [x, y]);
+
+        for (let r = 0; r < 4; r++) {
+          const normalized = normalizeCells(current);
+          const key = normalized.cells.map((c) => `${c[0]},${c[1]}`).join('|');
+          if (!unique.has(key)) {
+            unique.set(key, normalized);
+          }
+          current = current.map(([x, y]) => [y, -x]);
+        }
+
+        return Array.from(unique.values());
+      }
+
+      function normalizeCells(cells) {
+        let minX = Number.POSITIVE_INFINITY;
+        let minY = Number.POSITIVE_INFINITY;
+        let maxX = Number.NEGATIVE_INFINITY;
+        let maxY = Number.NEGATIVE_INFINITY;
+
+        for (let i = 0; i < cells.length; i++) {
+          const x = cells[i][0];
+          const y = cells[i][1];
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+
+        const shifted = cells
+          .map(([x, y]) => [x - minX, y - minY])
+          .sort((a, b) => (a[1] - b[1]) || (a[0] - b[0]));
+
+        return {
+          cells: shifted,
+          width: maxX - minX + 1,
+          height: maxY - minY + 1
+        };
+      }
+
+      // ------------------------------
+      // Backtracking Helper Rules
+      // ------------------------------
+      function canStillBeatBest(upperLines, upperFilled, upperPoints, upperSelectedUsed, best, objective = null) {
+        const mode = objective && typeof objective.mode === 'string' ? objective.mode : 'balanced';
+        const useComponentPreference = (mode === 'preferSelected' || mode === 'strictSelected') && Number(objective.selectedMask) !== 0;
+
+        if (useComponentPreference && mode === 'strictSelected') {
+          if (upperSelectedUsed < best.selectedUsed) return false;
+          if (upperSelectedUsed > best.selectedUsed) return true;
+        }
+
+        if (upperPoints < best.points) return false;
+        if (upperPoints > best.points) return true;
+
+        if (useComponentPreference && mode === 'preferSelected') {
+          if (upperSelectedUsed < best.selectedUsed) return false;
+          if (upperSelectedUsed > best.selectedUsed) return true;
+        }
+
+        if (upperLines < best.lines) return false;
+        if (upperLines === best.lines && upperFilled < best.filled) return false;
+        return true;
+      }
+
+      function getOptimisticBounds(index, occMask, rowDeadMask, filled, linesComplete, rowFill, remainingPieces, points, instanceTiers, used, maxPiecesFit) {
+        const openMask = SUFFIX_MASKS[index] & (FULL_MASK ^ occMask);
+        const openCells = popcount56(openMask);
+        const maxPiecesFitCalculated = Math.min(remainingPieces, Math.floor(openCells / PIECE_SIZE));
+        const maxAdd = maxPiecesFitCalculated * PIECE_SIZE;
+        const upperFilled = filled + maxAdd;
+
+        // Calculate optimistic maximum points greedily utilizing remaining highest tiers first
+        let countsByVal = [0, 0, 0, 0, 0, 0, 0, 0];
+        for (let t = 0; t < 5; t++) {
+          const insts = instanceTiers[t] || [];
+          const limit = insts.length;
+          for (let i = used[t]; i < limit; i++) {
+            countsByVal[insts[i]]++;
+          }
+        }
+        let upperPoints = points;
+        let budget = maxPiecesFitCalculated;
+        for (let v = 7; v >= 1; v--) {
+          const take = Math.min(budget, countsByVal[v]);
+          upperPoints += take * v;
+          budget -= take;
+          if (budget <= 0) break;
+        }
+
+        let upperLines = linesComplete;
+        if (maxAdd > 0) {
+          const missing = [];
+          for (let r = 0; r < ROWS; r++) {
+            const count = rowFill[r];
+            if (count === COLS) continue;
+            if ((rowDeadMask & (1 << r)) !== 0) continue;
+            missing.push(COLS - count);
+          }
+
+          missing.sort((a, b) => a - b);
+          let budgetLines = maxAdd;
+          for (let i = 0; i < missing.length; i++) {
+            if (missing[i] <= budgetLines) {
+              budgetLines -= missing[i];
+              upperLines++;
+            } else {
+              break;
+            }
+          }
+        }
+
+        return { upperLines, upperFilled, upperPoints };
+      }
+
+      function countHoles(occMask) {
+        let holes = 0;
+        for (let x = 0; x < COLS; x++) {
+          let seenFilled = false;
+          for (let y = 0; y < ROWS; y++) {
+            const idx = y * COLS + x;
+            const filled = (occMask & BIT_MASKS[idx]) !== 0n;
+            if (filled) {
+              seenFilled = true;
+            } else if (seenFilled) {
+              holes++;
+            }
+          }
+        }
+        return holes;
+      }
+
+      function boardSignature(boardType, boardInstance = null) {
+        let out = '';
+        for (let i = 0; i < boardType.length; i++) {
+          const t = boardType[i];
+          out += t < 0 ? '.' : PIECES[t].id;
+        }
+
+        if (!boardInstance) return out;
+
+        out += '|';
+        for (let i = 0; i < boardInstance.length; i++) {
+          const inst = boardInstance[i];
+          out += inst < 0 ? '.' : inst.toString(36);
+          out += ',';
+        }
+        return out;
+      }
+
+      function boardVariantScore(boardType, seed = 0) {
+        let hash = (2166136261 ^ (seed | 0)) >>> 0;
+        for (let i = 0; i < boardType.length; i++) {
+          hash ^= (boardType[i] + 2) & 0xff;
+          hash = Math.imul(hash, 16777619) >>> 0;
+        }
+        return hash;
+      }
+
+      // ------------------------------
+      // Stepper & CSS Style Modifiers
+      // ------------------------------
+      function setPieceShapeRotation(container, quarterTurns, animate = true) {
+        const shape = container ? container.querySelector('.piece-shape') : null;
+        if (!shape) return;
+        const normalizedTurns = ((clampInt(quarterTurns, 0, 3) % 4) + 4) % 4;
+        const rawCurrentSpinTurns = Number(shape.dataset.spinTurns);
+        const hasCurrentSpinTurns = Number.isFinite(rawCurrentSpinTurns);
+        const currentSpinTurns = hasCurrentSpinTurns ? Math.floor(rawCurrentSpinTurns) : 0;
+        const currentNormalizedTurns = ((currentSpinTurns % 4) + 4) % 4;
+        let nextSpinTurns = normalizedTurns;
+
+        if (animate && hasCurrentSpinTurns) {
+          let forwardDelta = normalizedTurns - currentNormalizedTurns;
+          if (forwardDelta < 0) forwardDelta += 4;
+          nextSpinTurns = currentSpinTurns + forwardDelta;
+        }
+
+        if (!animate) {
+          shape.classList.add('no-rotate-transition');
+        } else {
+          shape.classList.remove('no-rotate-transition');
+        }
+
+        shape.dataset.spinTurns = String(nextSpinTurns);
+        shape.dataset.rotationTurns = String(normalizedTurns);
+        shape.style.transform = `rotate(${nextSpinTurns * 90}deg)`;
+
+        if (!animate) {
+          requestAnimationFrame(() => {
+            shape.classList.remove('no-rotate-transition');
+          });
+        }
+      }
+
+      function renderPieceShape(container, cells, color, quarterTurns = 0, pieceId = null) {
+        container.textContent = '';
+        const normalized = normalizeCells(cells);
+        const shape = document.createElement('div');
+        shape.className = 'piece-shape';
+        shape.style.gridTemplateColumns = `repeat(${normalized.width}, var(--shape-cell-size))`;
+        shape.style.gridTemplateRows = `repeat(${normalized.height}, var(--shape-cell-size))`;
+
+        const hasDiamonds = pieceId && PIECES.find(p => p.id === pieceId)?.hasDiamonds;
+
+        for (let i = 0; i < normalized.cells.length; i++) {
+          const [x, y] = normalized.cells[i];
+          const cell = document.createElement('div');
+          cell.className = 'piece-shape-cell';
+          if (hasDiamonds) cell.classList.add('has-diamonds');
+          cell.style.gridColumn = String(x + 1);
+          cell.style.gridRow = String(y + 1);
+          cell.style.backgroundColor = color;
+          shape.appendChild(cell);
+        }
+
+        container.appendChild(shape);
+        setPieceShapeRotation(container, quarterTurns, false);
+      }
+
+      function getCompleteRows(boardType) {
+        const completeRows = new Set();
+        for (let r = 0; r < ROWS; r++) {
+          const rowStart = r * COLS;
+          let filled = 0;
+          for (let x = 0; x < COLS; x++) {
+            if (boardType[rowStart + x] >= 0) filled++;
+          }
+          if (filled === COLS) completeRows.add(r);
+        }
+        return completeRows;
+      }
+
+      function updateRowHighlights(completeRows) {
+        if (!rowHighlightLayer || !boardCells.length) return;
+
+        const first = boardCells[0];
+        const cellW = first.offsetWidth;
+        const cellH = first.offsetHeight;
+        if (!cellW || !cellH) return;
+
+        const rightCell = boardCells[1] || first;
+        const downCell = boardCells[COLS] || first;
+        const gapX = Math.max(0, rightCell.offsetLeft - first.offsetLeft - cellW);
+        const gapY = Math.max(0, downCell.offsetTop - first.offsetTop - cellH);
+        const stepX = cellW + gapX;
+        const stepY = cellH + gapY;
+        const baseX = first.offsetLeft - gapX * 0.5;
+        const baseY = first.offsetTop - gapY * 0.5;
+        const rowWidth = stepX * COLS;
+        const rowHeight = cellH + gapY;
+
+        for (let r = 0; r < ROWS; r++) {
+          const rowEl = rowHighlightEls[r];
+          rowEl.style.left = `${baseX}px`;
+          rowEl.style.top = `${baseY + r * stepY}px`;
+          rowEl.style.width = `${rowWidth}px`;
+          rowEl.style.height = `${rowHeight}px`;
+          rowEl.classList.toggle('active', completeRows.has(r));
+        }
+      }
+
+      function drawPieceOutlines(boardType, boardInstance) {
+        if (!pieceOutlineLayer || !boardCells.length) return;
+
+        const width = boardEl.clientWidth;
+        const height = boardEl.clientHeight;
+        pieceOutlineLayer.setAttribute('width', String(width));
+        pieceOutlineLayer.setAttribute('height', String(height));
+        pieceOutlineLayer.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        pieceOutlineLayer.replaceChildren();
+
+        const first = boardCells[0];
+        const cellW = first.offsetWidth;
+        const cellH = first.offsetHeight;
+        if (!cellW || !cellH) return;
+
+        const rightCell = boardCells[1] || first;
+        const downCell = boardCells[COLS] || first;
+        const gapX = Math.max(0, rightCell.offsetLeft - first.offsetLeft - cellW);
+        const gapY = Math.max(0, downCell.offsetTop - first.offsetTop - cellH);
+        const stepX = cellW + gapX;
+        const stepY = cellH + gapY;
+        const baseX = first.offsetLeft - gapX * 0.5;
+        const baseY = first.offsetTop - gapY * 0.5;
+
+        const groups = new Map();
+        for (let i = 0; i < CELLS; i++) {
+          const instance = boardInstance[i];
+          if (instance < 0) continue;
+          const type = boardType[i];
+          const row = Math.floor(i / COLS);
+          const col = i % COLS;
+          let group = groups.get(instance);
+          if (!group) {
+            group = { type, cells: [] };
+            groups.set(instance, group);
+          }
+          group.cells.push([col, row]);
+        }
+
+        for (const group of groups.values()) {
+          const cellSet = new Set(group.cells.map(([c, r]) => `${c},${r}`));
+          const edges = new Map();
+
+          const addEdge = (sx, sy, ex, ey) => {
+            edges.set(`${sx},${sy}`, [ex, ey]);
+          };
+
+          for (let i = 0; i < group.cells.length; i++) {
+            const [c, r] = group.cells[i];
+            if (!cellSet.has(`${c},${r - 1}`)) addEdge(c, r, c + 1, r);
+            if (!cellSet.has(`${c + 1},${r}`)) addEdge(c + 1, r, c + 1, r + 1);
+            if (!cellSet.has(`${c},${r + 1}`)) addEdge(c + 1, r + 1, c, r + 1);
+            if (!cellSet.has(`${c - 1},${r}`)) addEdge(c, r + 1, c, r);
+          }
+
+          while (edges.size) {
+            const startKey = edges.keys().next().value;
+            const points = [parsePointKey(startKey)];
+            let currentKey = startKey;
+            let guard = 0;
+
+            while (edges.has(currentKey) && guard < 128) {
+              guard++;
+              const nextPoint = edges.get(currentKey);
+              edges.delete(currentKey);
+              points.push(nextPoint);
+              currentKey = `${nextPoint[0]},${nextPoint[1]}`;
+              if (currentKey === startKey) break;
+            }
+
+            if (points.length < 2) continue;
+
+            const d = points
+              .map(([x, y], idx) => `${idx === 0 ? 'M' : 'L'} ${fmtCoord(baseX + x * stepX)} ${fmtCoord(baseY + y * stepY)}`)
+              .join(' ') + (currentKey === startKey ? ' Z' : '');
+
+            const path = document.createElementNS(SVG_NS, 'path');
+            path.setAttribute('d', d);
+            path.setAttribute('class', 'piece-outline-path');
+            path.setAttribute('stroke', PIECES[group.type].outline);
+            pieceOutlineLayer.appendChild(path);
+          }
+        }
+      }
+
+      function parsePointKey(key) {
+        const [x, y] = key.split(',');
+        return [Number(x), Number(y)];
+      }
+
+      function fmtCoord(n) {
+        return (Math.round(n * 100) / 100).toString();
+      }
+
+      function clampInt(value, min, max) {
+        const n = Number.parseInt(value, 10);
+        if (Number.isNaN(n)) return min;
+        return Math.max(min, Math.min(max, n));
+      }
+
+      function normalizeInputValue(inputEl) {
+        inputEl.value = String(clampInt(inputEl.value, 0, MAX_INPUT));
+      }
+
+      function getSolverCounts(inputCounts) {
+        return inputCounts.map((n) => Math.min(n, MAX_USABLE_PIECES));
+      }
+
+      // Format number display
+      function numberFmt(n) {
+        return new Intl.NumberFormat().format(n);
+      }
+
+      function getCssVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      }
+
+      function darkenHexToRgba(hex, factor, alpha) {
+        const value = (hex || '').trim().replace('#', '');
+        let r = 22, g = 24, b = 28;
+
+        if (value.length === 3) {
+          r = parseInt(value[0] + value[0], 16);
+          g = parseInt(value[1] + value[1], 16);
+          b = parseInt(value[2] + value[2], 16);
+        } else if (value.length === 6) {
+          r = parseInt(value.slice(0, 2), 16);
+          g = parseInt(value.slice(2, 4), 16);
+          b = parseInt(value.slice(4, 6), 16);
+        }
+
+        const dr = Math.max(0, Math.min(255, Math.round(r * factor)));
+        const dg = Math.max(0, Math.min(255, Math.round(g * factor)));
+        const db = Math.max(0, Math.min(255, Math.round(b * factor)));
+        return `rgba(${dr}, ${dg}, ${db}, ${alpha})`;
+      }
+
+      function popcount32(v) {
+        v = v - ((v >>> 1) & 0x55555555);
+        v = (v & 0x33333333) + ((v >>> 2) & 0x33333333);
+        return (((v + (v >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24;
+      }
+
+      function popcount56(n) {
+        const mask28 = (1n << 28n) - 1n;
+        let value = n, count = 0;
+        while (value !== 0n) {
+          count += popcount32(Number(value & mask28));
+          value >>= 28n;
+        }
+        return count;
+      }
+    })();
+  </script>
+</body>
+</html>
